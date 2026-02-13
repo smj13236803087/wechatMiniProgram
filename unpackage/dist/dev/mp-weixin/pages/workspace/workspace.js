@@ -21,12 +21,37 @@ const _sfc_main = {
       saving: false,
       canvasCtx: null,
       // Canvas 上下文
+      // 拖拽状态
+      dragState: {
+        isDragging: false,
+        dragItemId: null,
+        dragItemIndex: -1,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        isOverDeleteZone: false,
+        nearestBeadIndex: -1,
+        // 最近的珠子索引（用于换位置）
+        longPressTimer: null,
+        drawTimer: null,
+        // 绘制节流定时器
+        canvasRect: null
+        // 缓存 canvas 位置
+      },
       // 珠子选择状态
       beadStep: "category",
       selectedBeadCategory: null,
       // 配饰选择状态
       accessoryStep: "category",
       selectedAccessoryCategory: null,
+      // 新的tab状态
+      activeMainTab: "bead",
+      // 主tab：bead, accessory, pendant
+      activeBeadSubTab: null,
+      // 珠子子tab：obsidian, amethyst, moonshine
+      activeAccessorySubTab: null,
+      // 配饰子tab
       // 分类映射
       beadCategories: [
         { key: "obsidian", category: "obsidian" },
@@ -60,15 +85,15 @@ const _sfc_main = {
         return category && category.key && this.categorizedProducts[category.key] && this.categorizedProducts[category.key].products && this.categorizedProducts[category.key].products.length > 0;
       });
     },
-    // 预览尺寸（像素）- 用于计算
+    // 预览尺寸（像素）- 用于计算（缩小预览区域）
     previewSize() {
-      return 300;
+      return 200;
     },
     // 预览尺寸（像素）- 用于样式（rpx转px）
     previewSizePx() {
       const systemInfo = common_vendor.index.getSystemInfoSync();
       const screenWidth = systemInfo.screenWidth;
-      return 600 / 750 * screenWidth;
+      return 400 / 750 * screenWidth;
     },
     // 中心点坐标
     centerX() {
@@ -219,6 +244,32 @@ const _sfc_main = {
       this.$nextTick(() => {
         this.drawBracelet();
       });
+    },
+    // 监听主tab切换，自动设置第一个子tab
+    activeMainTab(newVal) {
+      if (newVal === "bead" && this.validBeadCategories.length > 0) {
+        this.activeBeadSubTab = this.validBeadCategories[0].key;
+      } else if (newVal === "accessory" && this.validAccessoryCategories.length > 0) {
+        this.activeAccessorySubTab = this.validAccessoryCategories[0].key;
+      }
+    },
+    // 监听珠子分类变化，自动设置第一个子tab
+    validBeadCategories: {
+      handler(newVal) {
+        if (this.activeMainTab === "bead" && newVal.length > 0 && !this.activeBeadSubTab) {
+          this.activeBeadSubTab = newVal[0].key;
+        }
+      },
+      immediate: true
+    },
+    // 监听配饰分类变化，自动设置第一个子tab
+    validAccessoryCategories: {
+      handler(newVal) {
+        if (this.activeMainTab === "accessory" && newVal.length > 0 && !this.activeAccessorySubTab) {
+          this.activeAccessorySubTab = newVal[0].key;
+        }
+      },
+      immediate: true
     }
   },
   methods: {
@@ -234,7 +285,7 @@ const _sfc_main = {
         this.categorizedProducts = utils_bracelet.categorizeProducts(products);
       } catch (err) {
         this.error = err.message || "拉取商品失败";
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:523", "拉取商品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:722", "拉取商品失败：", err);
         this.categorizedProducts = null;
       } finally {
         this.loading = false;
@@ -254,7 +305,7 @@ const _sfc_main = {
           this.currentDesignId = design.id;
         }
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:544", "加载作品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:743", "加载作品失败：", err);
         common_vendor.index.showToast({
           title: "加载作品失败",
           icon: "none"
@@ -295,9 +346,9 @@ const _sfc_main = {
       this.selectedBeadCategory = null;
     },
     selectBeadProduct(product) {
-      if (!this.selectedBeadCategory)
+      if (!this.activeBeadSubTab)
         return;
-      const category = this.beadCategories.find((c) => c && c.key === this.selectedBeadCategory);
+      const category = this.beadCategories.find((c) => c && c.key === this.activeBeadSubTab);
       if (!category || !category.category)
         return;
       const diameterStr = utils_bracelet.getProductDiameter(product);
@@ -324,7 +375,6 @@ const _sfc_main = {
         weight
       };
       this.items.push(newItem);
-      this.resetBeadSelection();
     },
     selectAccessoryCategory(categoryKey) {
       this.selectedAccessoryCategory = categoryKey;
@@ -335,9 +385,9 @@ const _sfc_main = {
       this.selectedAccessoryCategory = null;
     },
     selectAccessoryProduct(product) {
-      if (!this.selectedAccessoryCategory)
+      if (!this.activeAccessorySubTab)
         return;
-      const category = this.accessoryCategories.find((c) => c && c.key === this.selectedAccessoryCategory);
+      const category = this.accessoryCategories.find((c) => c && c.key === this.activeAccessorySubTab);
       if (!category || !category.category)
         return;
       const diameterStr = utils_bracelet.getProductDiameter(product);
@@ -364,7 +414,6 @@ const _sfc_main = {
         weight
       };
       this.items.push(newItem);
-      this.resetAccessorySelection();
     },
     selectPendantProduct(product) {
       const diameterStr = utils_bracelet.getProductDiameter(product);
@@ -392,7 +441,18 @@ const _sfc_main = {
       this.items.push(newItem);
     },
     removeItem(id) {
-      this.items = this.items.filter((item) => item.id !== id);
+      const index = this.items.findIndex((item) => item.id === id);
+      if (index === -1)
+        return;
+      common_vendor.index.showToast({
+        title: "已删除",
+        icon: "success",
+        duration: 500
+      });
+      setTimeout(() => {
+        this.items = this.items.filter((item) => item.id !== id);
+        this.drawBracelet();
+      }, 100);
     },
     // 获取珠子半径（像素）
     getBeadRadius(diameter) {
@@ -445,12 +505,25 @@ const _sfc_main = {
       ctx.setLineDash([5, 5], 0);
       ctx.stroke();
       ctx.setLineDash([], 0);
+      const nearestBeadIndex = this.dragState.nearestBeadIndex;
       for (let i = 0; i < this.items.length; i++) {
+        if (this.dragState.isDragging && i === this.dragState.dragItemIndex) {
+          continue;
+        }
         const item = this.items[i];
         const x = this.getItemX(i);
         const y = this.getItemY(i);
         const radius = this.getBeadRadius(item.diameter);
         const color = item.color || "#8b4513";
+        if (i === nearestBeadIndex) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius + 4, 0, 2 * Math.PI);
+          ctx.setStrokeStyle("#3b82f6");
+          ctx.setLineWidth(3);
+          ctx.setLineDash([5, 5], 0);
+          ctx.stroke();
+          ctx.setLineDash([], 0);
+        }
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
         ctx.setFillStyle(color);
@@ -461,17 +534,204 @@ const _sfc_main = {
       }
       ctx.draw();
     },
-    // Canvas 触摸开始
+    // Canvas 触摸开始 - 检测长按
     handleCanvasTouchStart(e) {
-      common_vendor.index.__f__("log", "at pages/workspace/workspace.vue:797", "Canvas touch start", e);
+      if (this.items.length === 0)
+        return;
+      e.stopPropagation();
+      const touch = e.touches[0];
+      const query = common_vendor.index.createSelectorQuery().in(this);
+      query.select(".canvas-container").boundingClientRect((rect) => {
+        if (!rect)
+          return;
+        this.dragState.canvasRect = rect;
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const itemIndex = this.findItemAtPosition(x, y);
+        if (itemIndex === -1)
+          return;
+        if (this.dragState.longPressTimer) {
+          clearTimeout(this.dragState.longPressTimer);
+        }
+        this.dragState.longPressTimer = setTimeout(() => {
+          this.startDrag(itemIndex, x, y);
+        }, 500);
+      }).exec();
     },
     // Canvas 触摸移动
     handleCanvasTouchMove(e) {
-      common_vendor.index.__f__("log", "at pages/workspace/workspace.vue:803", "Canvas touch move", e);
+      e.stopPropagation();
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      if (!this.dragState.isDragging) {
+        if (this.dragState.longPressTimer) {
+          clearTimeout(this.dragState.longPressTimer);
+          this.dragState.longPressTimer = null;
+        }
+        return false;
+      }
+      const touch = e.touches[0];
+      const canvasRect = this.dragState.canvasRect;
+      if (!canvasRect) {
+        const query = common_vendor.index.createSelectorQuery().in(this);
+        query.select(".canvas-container").boundingClientRect((rect) => {
+          if (rect) {
+            this.dragState.canvasRect = rect;
+            const x2 = touch.clientX - rect.left;
+            const y2 = touch.clientY - rect.top;
+            this.updateDragPosition(x2, y2, touch);
+          }
+        }).exec();
+        return false;
+      }
+      const x = touch.clientX - canvasRect.left;
+      const y = touch.clientY - canvasRect.top;
+      this.updateDragPosition(x, y, touch);
+      return false;
+    },
+    // 更新拖拽位置（节流绘制）
+    updateDragPosition(x, y, touch) {
+      this.dragState.currentX = x;
+      this.dragState.currentY = y;
+      if (this.dragState.drawTimer) {
+        clearTimeout(this.dragState.drawTimer);
+      }
+      this.dragState.drawTimer = setTimeout(() => {
+        const query = common_vendor.index.createSelectorQuery().in(this);
+        query.select(".delete-zone").boundingClientRect((deleteRect) => {
+          if (deleteRect) {
+            const isInDeleteZone = touch.clientY >= deleteRect.top && touch.clientY <= deleteRect.bottom && touch.clientX >= deleteRect.left && touch.clientX <= deleteRect.right;
+            this.dragState.isOverDeleteZone = isInDeleteZone;
+          } else {
+            this.dragState.isOverDeleteZone = false;
+          }
+          if (this.isInPreviewArea(x, y)) {
+            const nearestIndex = this.findNearestBead(x, y, this.dragState.dragItemIndex);
+            this.dragState.nearestBeadIndex = nearestIndex;
+          } else {
+            this.dragState.nearestBeadIndex = -1;
+          }
+          this.drawBracelet();
+        }).exec();
+      }, 16);
     },
     // Canvas 触摸结束
     handleCanvasTouchEnd(e) {
-      common_vendor.index.__f__("log", "at pages/workspace/workspace.vue:809", "Canvas touch end", e);
+      e.stopPropagation();
+      if (this.dragState.longPressTimer) {
+        clearTimeout(this.dragState.longPressTimer);
+        this.dragState.longPressTimer = null;
+      }
+      if (!this.dragState.isDragging)
+        return;
+      if (this.dragState.isOverDeleteZone) {
+        this.removeItem(this.dragState.dragItemId);
+        this.endDrag();
+        return;
+      }
+      if (this.dragState.nearestBeadIndex !== -1 && this.dragState.nearestBeadIndex !== this.dragState.dragItemIndex) {
+        this.swapItems(this.dragState.dragItemIndex, this.dragState.nearestBeadIndex);
+      }
+      this.endDrag();
+    },
+    // 开始拖拽
+    startDrag(itemIndex, x, y) {
+      if (itemIndex < 0 || itemIndex >= this.items.length)
+        return;
+      if (!this.dragState.canvasRect) {
+        const query = common_vendor.index.createSelectorQuery().in(this);
+        query.select(".canvas-container").boundingClientRect((rect) => {
+          if (rect) {
+            this.dragState.canvasRect = rect;
+          }
+        }).exec();
+      }
+      this.dragState.isDragging = true;
+      this.dragState.dragItemId = this.items[itemIndex].id;
+      this.dragState.dragItemIndex = itemIndex;
+      this.dragState.startX = x;
+      this.dragState.startY = y;
+      this.dragState.currentX = x;
+      this.dragState.currentY = y;
+      this.dragState.isOverDeleteZone = false;
+      this.disableScroll();
+      this.drawBracelet();
+    },
+    // 结束拖拽
+    endDrag() {
+      if (this.dragState.drawTimer) {
+        clearTimeout(this.dragState.drawTimer);
+        this.dragState.drawTimer = null;
+      }
+      this.dragState.isDragging = false;
+      this.dragState.dragItemId = null;
+      this.dragState.dragItemIndex = -1;
+      this.dragState.isOverDeleteZone = false;
+      this.dragState.nearestBeadIndex = -1;
+      this.dragState.canvasRect = null;
+      this.enableScroll();
+      this.drawBracelet();
+    },
+    // 禁用滚动
+    disableScroll() {
+      common_vendor.index.pageScrollTo({
+        scrollTop: 0,
+        duration: 0
+      });
+    },
+    // 启用滚动
+    enableScroll() {
+    },
+    // 查找指定位置的珠子索引
+    findItemAtPosition(x, y) {
+      this.centerX;
+      this.centerY;
+      for (let i = 0; i < this.items.length; i++) {
+        const itemX = this.getItemX(i);
+        const itemY = this.getItemY(i);
+        const radius = this.getBeadRadius(this.items[i].diameter);
+        const distance = Math.sqrt(Math.pow(x - itemX, 2) + Math.pow(y - itemY, 2));
+        if (distance <= radius + 5) {
+          return i;
+        }
+      }
+      return -1;
+    },
+    // 查找距离指定位置最近的珠子索引
+    findNearestBead(x, y, excludeIndex) {
+      let nearestIndex = -1;
+      let minDistance = Infinity;
+      for (let i = 0; i < this.items.length; i++) {
+        if (i === excludeIndex)
+          continue;
+        const itemX = this.getItemX(i);
+        const itemY = this.getItemY(i);
+        const radius = this.getBeadRadius(this.items[i].diameter);
+        const distance = Math.sqrt(Math.pow(x - itemX, 2) + Math.pow(y - itemY, 2)) - radius;
+        if (distance < minDistance && distance < 80) {
+          minDistance = distance;
+          nearestIndex = i;
+        }
+      }
+      return nearestIndex;
+    },
+    // 检查是否在预览区域内
+    isInPreviewArea(x, y) {
+      const size = this.previewSize;
+      return x >= 0 && x <= size && y >= 0 && y <= size;
+    },
+    // 交换两个项目的位置
+    swapItems(index1, index2) {
+      if (index1 < 0 || index1 >= this.items.length || index2 < 0 || index2 >= this.items.length || index1 === index2) {
+        return;
+      }
+      const temp = this.items[index1];
+      this.$set(this.items, index1, this.items[index2]);
+      this.$set(this.items, index2, temp);
+      this.$nextTick(() => {
+        this.drawBracelet();
+      });
     },
     completeWristSize() {
       const size = parseFloat(this.wristSizeInput);
@@ -541,7 +801,7 @@ const _sfc_main = {
           icon: "success"
         });
         setTimeout(() => {
-          common_vendor.index.switchTab({
+          common_vendor.index.navigateTo({
             url: "/pages/portfolio/portfolio"
           });
         }, 1500);
@@ -572,52 +832,118 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     }),
     j: common_vendor.o((...args) => $options.closeModal && $options.closeModal(...args))
   } : {}, {
-    k: common_vendor.t($data.wristSize),
-    l: common_vendor.t($data.wearingStyle === "single" ? "单圈" : "双圈"),
-    m: common_vendor.o(($event) => $data.showWristSizeModal = true),
-    n: $data.items.length === 0
+    k: $data.items.length === 0
   }, $data.items.length === 0 ? {} : common_vendor.e({
-    o: $options.exceedsLimit
+    l: $options.exceedsLimit
   }, $options.exceedsLimit ? {
-    p: common_vendor.t($options.currentCircumference.toFixed(1)),
-    q: common_vendor.t($options.maxCircumference.toFixed(1))
+    m: common_vendor.t($options.currentCircumference.toFixed(1)),
+    n: common_vendor.t($options.maxCircumference.toFixed(1))
   } : $options.reachesLimit ? {} : {}, {
-    r: $options.reachesLimit,
-    s: $options.previewSizePx + "px",
-    t: $options.previewSizePx + "px",
-    v: common_vendor.o((...args) => $options.handleCanvasTouchStart && $options.handleCanvasTouchStart(...args)),
-    w: common_vendor.o((...args) => $options.handleCanvasTouchMove && $options.handleCanvasTouchMove(...args)),
-    x: common_vendor.o((...args) => $options.handleCanvasTouchEnd && $options.handleCanvasTouchEnd(...args)),
-    y: common_vendor.f($data.items, (item, index, i0) => {
-      return {
-        a: common_vendor.t(index + 1),
-        b: common_vendor.t(item.name),
-        c: common_vendor.t(item.price),
-        d: common_vendor.o(($event) => $options.removeItem(item.id), item.id),
-        e: item.id
-      };
+    o: $options.reachesLimit,
+    p: $options.previewSizePx + "px",
+    q: $options.previewSizePx + "px",
+    r: common_vendor.o((...args) => $options.handleCanvasTouchStart && $options.handleCanvasTouchStart(...args)),
+    s: common_vendor.o((...args) => $options.handleCanvasTouchMove && $options.handleCanvasTouchMove(...args)),
+    t: common_vendor.o((...args) => $options.handleCanvasTouchEnd && $options.handleCanvasTouchEnd(...args)),
+    v: common_vendor.o(() => {
     })
   }), {
+    w: common_vendor.t($data.wristSize),
+    x: common_vendor.t($data.wearingStyle === "single" ? "单圈" : "双圈"),
+    y: common_vendor.o(($event) => $data.showWristSizeModal = true),
     z: common_vendor.t($options.totalPrice),
     A: common_vendor.t($data.items.length),
-    B: $data.designName,
-    C: common_vendor.o(($event) => $data.designName = $event.detail.value),
-    D: common_vendor.t($data.saving ? "保存中..." : "保存到我的作品集"),
-    E: $data.items.length === 0 || $data.saving,
-    F: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args)),
-    G: $data.loading
+    B: $data.dragState.isDragging && $data.dragState.isOverDeleteZone ? 1 : "",
+    C: $data.activeMainTab === "bead" ? 1 : "",
+    D: common_vendor.o(($event) => $data.activeMainTab = "bead"),
+    E: $data.activeMainTab === "accessory" ? 1 : "",
+    F: common_vendor.o(($event) => $data.activeMainTab = "accessory"),
+    G: $data.activeMainTab === "pendant" ? 1 : "",
+    H: common_vendor.o(($event) => $data.activeMainTab = "pendant"),
+    I: $data.loading
   }, $data.loading ? {} : $data.error ? {
-    I: common_vendor.t($data.error)
+    K: common_vendor.t($data.error)
   } : !$data.categorizedProducts ? {} : common_vendor.e({
-    K: $data.beadStep !== "category"
+    M: $data.activeMainTab === "bead"
+  }, $data.activeMainTab === "bead" ? common_vendor.e({
+    N: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
+      var _a2;
+      return {
+        a: common_vendor.t(((_a2 = $data.categorizedProducts[category.key]) == null ? void 0 : _a2.name) || ""),
+        b: category.key,
+        c: $data.activeBeadSubTab === category.key ? 1 : "",
+        d: common_vendor.o(($event) => $data.activeBeadSubTab = category.key, category.key)
+      };
+    }),
+    O: $data.activeBeadSubTab && $data.categorizedProducts[$data.activeBeadSubTab] && $data.categorizedProducts[$data.activeBeadSubTab].products
+  }, $data.activeBeadSubTab && $data.categorizedProducts[$data.activeBeadSubTab] && $data.categorizedProducts[$data.activeBeadSubTab].products ? {
+    P: common_vendor.f($data.categorizedProducts[$data.activeBeadSubTab].products, (product, k0, i0) => {
+      return {
+        a: $options.getProductImage(product),
+        b: common_vendor.t(product.title),
+        c: common_vendor.t($options.getProductPrice(product)),
+        d: product.id,
+        e: common_vendor.o(($event) => $options.selectBeadProduct(product), product.id)
+      };
+    })
+  } : {}) : {}, {
+    Q: $data.activeMainTab === "accessory"
+  }, $data.activeMainTab === "accessory" ? common_vendor.e({
+    R: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
+      var _a2;
+      return {
+        a: common_vendor.t(((_a2 = $data.categorizedProducts[category.key]) == null ? void 0 : _a2.name) || ""),
+        b: category.key,
+        c: $data.activeAccessorySubTab === category.key ? 1 : "",
+        d: common_vendor.o(($event) => $data.activeAccessorySubTab = category.key, category.key)
+      };
+    }),
+    S: $data.activeAccessorySubTab && $data.categorizedProducts[$data.activeAccessorySubTab] && $data.categorizedProducts[$data.activeAccessorySubTab].products
+  }, $data.activeAccessorySubTab && $data.categorizedProducts[$data.activeAccessorySubTab] && $data.categorizedProducts[$data.activeAccessorySubTab].products ? {
+    T: common_vendor.f($data.categorizedProducts[$data.activeAccessorySubTab].products, (product, k0, i0) => {
+      return {
+        a: $options.getProductImage(product),
+        b: common_vendor.t(product.title),
+        c: common_vendor.t($options.getProductPrice(product)),
+        d: product.id,
+        e: common_vendor.o(($event) => $options.selectAccessoryProduct(product), product.id)
+      };
+    })
+  } : {}) : {}, {
+    U: $data.activeMainTab === "pendant"
+  }, $data.activeMainTab === "pendant" ? common_vendor.e({
+    V: $data.categorizedProducts.pendant && $data.categorizedProducts.pendant.products
+  }, $data.categorizedProducts.pendant && $data.categorizedProducts.pendant.products ? {
+    W: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
+      return {
+        a: $options.getProductImage(product),
+        b: common_vendor.t(product.title),
+        c: common_vendor.t($options.getProductPrice(product)),
+        d: product.id,
+        e: common_vendor.o(($event) => $options.selectPendantProduct(product), product.id)
+      };
+    })
+  } : {}) : {}), {
+    J: $data.error,
+    L: !$data.categorizedProducts,
+    X: $data.designName,
+    Y: common_vendor.o(($event) => $data.designName = $event.detail.value),
+    Z: common_vendor.t($data.saving ? "保存中..." : "保存"),
+    aa: $data.items.length === 0 || $data.saving,
+    ab: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args)),
+    ac: $data.loading
+  }, $data.loading ? {} : $data.error ? {
+    ae: common_vendor.t($data.error)
+  } : !$data.categorizedProducts ? {} : common_vendor.e({
+    ag: $data.beadStep !== "category"
   }, $data.beadStep !== "category" ? {
-    L: common_vendor.o((...args) => $options.resetBeadSelection && $options.resetBeadSelection(...args))
+    ah: common_vendor.o((...args) => $options.resetBeadSelection && $options.resetBeadSelection(...args))
   } : {}, {
-    M: $data.beadStep === "category"
+    ai: $data.beadStep === "category"
   }, $data.beadStep === "category" ? common_vendor.e({
-    N: $data.categorizedProducts && $options.validBeadCategories.length > 0
+    aj: $data.categorizedProducts && $options.validBeadCategories.length > 0
   }, $data.categorizedProducts && $options.validBeadCategories.length > 0 ? {
-    O: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
+    ak: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: $options.getCategoryImage(category.key),
@@ -627,13 +953,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : common_vendor.e({
-    P: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory]
+    al: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory]
   }, $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] ? {
-    Q: common_vendor.t(((_a = $data.categorizedProducts[$data.selectedBeadCategory]) == null ? void 0 : _a.name) || "")
+    am: common_vendor.t(((_a = $data.categorizedProducts[$data.selectedBeadCategory]) == null ? void 0 : _a.name) || "")
   } : {}, {
-    R: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products
+    an: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products
   }, $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products ? {
-    S: common_vendor.f($data.categorizedProducts[$data.selectedBeadCategory].products, (product, k0, i0) => {
+    ao: common_vendor.f($data.categorizedProducts[$data.selectedBeadCategory].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -643,15 +969,15 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}), {
-    T: $data.accessoryStep !== "category"
+    ap: $data.accessoryStep !== "category"
   }, $data.accessoryStep !== "category" ? {
-    U: common_vendor.o((...args) => $options.resetAccessorySelection && $options.resetAccessorySelection(...args))
+    aq: common_vendor.o((...args) => $options.resetAccessorySelection && $options.resetAccessorySelection(...args))
   } : {}, {
-    V: $data.accessoryStep === "category"
+    ar: $data.accessoryStep === "category"
   }, $data.accessoryStep === "category" ? common_vendor.e({
-    W: $data.categorizedProducts && $options.validAccessoryCategories.length > 0
+    as: $data.categorizedProducts && $options.validAccessoryCategories.length > 0
   }, $data.categorizedProducts && $options.validAccessoryCategories.length > 0 ? {
-    X: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
+    at: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: $options.getCategoryImage(category.key),
@@ -661,13 +987,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : common_vendor.e({
-    Y: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory]
+    av: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory]
   }, $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] ? {
-    Z: common_vendor.t(((_b = $data.categorizedProducts[$data.selectedAccessoryCategory]) == null ? void 0 : _b.name) || "")
+    aw: common_vendor.t(((_b = $data.categorizedProducts[$data.selectedAccessoryCategory]) == null ? void 0 : _b.name) || "")
   } : {}, {
-    aa: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products
+    ax: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products
   }, $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products ? {
-    ab: common_vendor.f($data.categorizedProducts[$data.selectedAccessoryCategory].products, (product, k0, i0) => {
+    ay: common_vendor.f($data.categorizedProducts[$data.selectedAccessoryCategory].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -677,9 +1003,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}), {
-    ac: !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0
+    az: !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0
   }, !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0 ? {} : {
-    ad: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
+    aA: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -688,9 +1014,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         e: common_vendor.o(($event) => $options.selectPendantProduct(product), product.id)
       };
     })
+  }, {
+    aB: $data.designName,
+    aC: common_vendor.o(($event) => $data.designName = $event.detail.value),
+    aD: common_vendor.t($data.saving ? "保存中..." : "保存到我的作品集"),
+    aE: $data.items.length === 0 || $data.saving,
+    aF: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args))
   }), {
-    H: $data.error,
-    J: !$data.categorizedProducts
+    ad: $data.error,
+    af: !$data.categorizedProducts,
+    aG: !$data.dragState.isDragging,
+    aH: !$data.dragState.isDragging
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-245b3c15"]]);
