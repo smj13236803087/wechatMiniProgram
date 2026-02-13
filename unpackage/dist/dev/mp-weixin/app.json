@@ -5,7 +5,8 @@
     "pages/cart/cart",
     "pages/profile/profile",
     "pages/workspace/workspace",
-    "pages/portfolio/portfolio"
+    "pages/portfolio/portfolio",
+    "pages/address/address"
   ],
   "window": {
     "navigationBarTextStyle": "black",

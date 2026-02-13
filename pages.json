@@ -35,6 +35,12 @@
 			"style": {
 				"navigationBarTitleText": "我的作品集"
 			}
+		},
+		{
+			"path": "pages/address/address",
+			"style": {
+				"navigationBarTitleText": "我的地址"
+			}
 		}
 	],
 	"globalStyle": {

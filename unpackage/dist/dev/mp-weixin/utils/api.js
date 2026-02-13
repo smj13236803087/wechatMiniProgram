@@ -142,6 +142,33 @@ const productAPI = {
     return request("/api/shopify/products");
   }
 };
+const addressAPI = {
+  // 获取地址列表
+  getAddresses() {
+    return request("/api/addresses");
+  },
+  // 创建地址
+  createAddress(addressData) {
+    return request("/api/addresses", {
+      method: "POST",
+      data: addressData
+    });
+  },
+  // 更新地址
+  updateAddress(id, addressData) {
+    return request(`/api/addresses/${id}`, {
+      method: "PUT",
+      data: addressData
+    });
+  },
+  // 删除地址
+  deleteAddress(id) {
+    return request(`/api/addresses/${id}`, {
+      method: "DELETE"
+    });
+  }
+};
+exports.addressAPI = addressAPI;
 exports.authAPI = authAPI;
 exports.designAPI = designAPI;
 exports.productAPI = productAPI;

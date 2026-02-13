@@ -167,9 +167,8 @@ const _sfc_main = {
       });
     },
     goToAddresses() {
-      common_vendor.index.showToast({
-        title: "功能开发中",
-        icon: "none"
+      common_vendor.index.navigateTo({
+        url: "/pages/address/address"
       });
     }
   }
