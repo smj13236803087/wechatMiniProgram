@@ -13,7 +13,7 @@ const _sfc_main = {
     userInitial() {
       if (!this.user)
         return "U";
-      const name = this.userInfo.nickName || this.user.name || this.user.email || "U";
+      const name = this.userInfo.nickName || this.user.name || "微";
       return name[0].toUpperCase();
     }
   },
@@ -24,22 +24,35 @@ const _sfc_main = {
     this.checkLogin();
   },
   methods: {
-    async checkLogin() {
-      try {
-        const res = await utils_api.authAPI.getMe();
-        if (res.user) {
-          this.user = res.user;
-          const userInfo = common_vendor.index.getStorageSync("wechatUserInfo");
-          if (userInfo) {
-            this.userInfo = userInfo;
-          }
-        }
-      } catch (err) {
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:116", "未登录");
-        this.user = null;
+    // 通过button的open-type获取用户信息（小程序推荐方式）
+    onGetUserInfo(e) {
+      common_vendor.index.__f__("log", "at pages/profile/profile.vue:107", "通过button获取用户信息:", e);
+      let userInfo = {};
+      if (e.detail && e.detail.userInfo) {
+        userInfo = {
+          nickName: e.detail.userInfo.nickName,
+          avatarUrl: e.detail.userInfo.avatarUrl,
+          gender: e.detail.userInfo.gender,
+          country: e.detail.userInfo.country,
+          province: e.detail.userInfo.province,
+          city: e.detail.userInfo.city
+        };
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:119", "解析后的用户信息:", userInfo);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:120", "昵称:", userInfo.nickName, "头像:", userInfo.avatarUrl);
+        common_vendor.index.setStorageSync("wechatUserInfo", userInfo);
+        this.userInfo = userInfo;
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:125", "设置后的this.userInfo:", this.userInfo);
+      } else {
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:128", "用户拒绝授权");
+        common_vendor.index.showToast({
+          title: "需要授权才能获取昵称和头像",
+          icon: "none",
+          duration: 2e3
+        });
       }
+      this.handleWechatLoginWithInfo(userInfo);
     },
-    async handleWechatLogin() {
+    async handleWechatLoginWithInfo(userInfo) {
       this.logging = true;
       try {
         const loginRes = await new Promise((resolve, reject) => {
@@ -52,36 +65,37 @@ const _sfc_main = {
         if (!loginRes.code) {
           throw new Error("获取微信登录code失败");
         }
-        let userInfo = {};
-        try {
-          const userInfoRes = await new Promise((resolve, reject) => {
-            common_vendor.index.getUserProfile({
-              desc: "用于完善用户资料",
-              success: resolve,
-              fail: reject
-            });
-          });
-          userInfo = {
-            nickName: userInfoRes.userInfo.nickName,
-            avatarUrl: userInfoRes.userInfo.avatarUrl,
-            gender: userInfoRes.userInfo.gender,
-            country: userInfoRes.userInfo.country,
-            province: userInfoRes.userInfo.province,
-            city: userInfoRes.userInfo.city
-          };
-          common_vendor.index.setStorageSync("wechatUserInfo", userInfo);
-          this.userInfo = userInfo;
-        } catch (err) {
-          common_vendor.index.__f__("log", "at pages/profile/profile.vue:159", "用户取消授权，使用基础信息");
-        }
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:155", "获取登录code成功，开始调用登录API...");
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:156", "使用的用户信息:", userInfo);
         const res = await utils_api.authAPI.wechatLogin(loginRes.code, userInfo);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:161", "登录API返回:", res);
+        if (res && res.user) {
+          this.user = res.user;
+          if (userInfo && (userInfo.nickName || userInfo.avatarUrl)) {
+            this.userInfo = userInfo;
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:170", "使用微信用户信息，设置userInfo:", this.userInfo);
+          } else if (res.user.name) {
+            this.userInfo = {
+              nickName: res.user.name
+            };
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:176", "使用后端用户名，设置userInfo:", this.userInfo);
+          } else {
+            this.userInfo = {
+              nickName: "微信用户"
+            };
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:181", "使用默认用户名，设置userInfo:", this.userInfo);
+          }
+          common_vendor.index.__f__("log", "at pages/profile/profile.vue:183", "登录后最终userInfo:", this.userInfo);
+          common_vendor.index.__f__("log", "at pages/profile/profile.vue:184", "登录后最终user:", this.user);
+        } else {
+          await this.checkLogin();
+        }
         common_vendor.index.showToast({
           title: "登录成功",
           icon: "success"
         });
-        await this.checkLogin();
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/profile/profile.vue:174", "微信登录失败：", err);
+        common_vendor.index.__f__("error", "at pages/profile/profile.vue:195", "微信登录失败：", err);
         common_vendor.index.showToast({
           title: err.message || "登录失败，请重试",
           icon: "none",
@@ -89,6 +103,30 @@ const _sfc_main = {
         });
       } finally {
         this.logging = false;
+      }
+    },
+    async checkLogin() {
+      try {
+        const res = await utils_api.authAPI.getMe();
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:209", "getMe响应:", res);
+        if (res && res.user) {
+          this.user = res.user;
+          const storedUserInfo = common_vendor.index.getStorageSync("wechatUserInfo");
+          if (storedUserInfo && (storedUserInfo.nickName || storedUserInfo.avatarUrl)) {
+            this.userInfo = storedUserInfo;
+          } else {
+            this.userInfo = {
+              nickName: this.user.name || "微信用户"
+            };
+          }
+        } else {
+          this.user = null;
+          this.userInfo = {};
+        }
+      } catch (err) {
+        common_vendor.index.__f__("error", "at pages/profile/profile.vue:227", "检查登录状态失败:", err);
+        this.user = null;
+        this.userInfo = {};
       }
     },
     async handleLogout() {
@@ -107,9 +145,11 @@ const _sfc_main = {
                 icon: "success"
               });
             } catch (err) {
+              this.user = null;
+              this.userInfo = {};
               common_vendor.index.showToast({
-                title: "退出失败",
-                icon: "none"
+                title: "已退出登录",
+                icon: "success"
               });
             }
           }
@@ -141,7 +181,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     b: $data.logging
   }, $data.logging ? {} : {}, {
     c: $data.logging,
-    d: common_vendor.o((...args) => $options.handleWechatLogin && $options.handleWechatLogin(...args))
+    d: common_vendor.o((...args) => $options.onGetUserInfo && $options.onGetUserInfo(...args))
   }) : common_vendor.e({
     e: $data.userInfo.avatarUrl
   }, $data.userInfo.avatarUrl ? {
@@ -149,9 +189,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : {
     g: common_vendor.t($options.userInitial)
   }, {
-    h: common_vendor.t($data.userInfo.nickName || $data.user.name || "微信用户"),
-    i: $data.user.email
-  }, $data.user.email ? {
+    h: common_vendor.t($data.userInfo.nickName || "微信用户"),
+    i: $data.user.email && !$data.userInfo.nickName
+  }, $data.user.email && !$data.userInfo.nickName ? {
     j: common_vendor.t($data.user.email)
   } : {}, {
     k: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),

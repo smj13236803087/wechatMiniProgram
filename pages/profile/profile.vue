@@ -9,7 +9,8 @@
 				<button 
 					class="wechat-login-btn" 
 					:disabled="logging"
-					@click="handleWechatLogin"
+					open-type="getUserInfo"
+					@getuserinfo="onGetUserInfo"
 				>
 					<text v-if="logging">登录中...</text>
 					<text v-else>微信快速登录</text>
@@ -33,8 +34,8 @@
 					</view>
 				</view>
 				<view class="user-info">
-					<view class="user-name">{{ userInfo.nickName || user.name || '微信用户' }}</view>
-					<view class="user-email" v-if="user.email">{{ user.email }}</view>
+					<view class="user-name">{{ userInfo.nickName || '微信用户' }}</view>
+					<view class="user-email" v-if="user.email && !userInfo.nickName">{{ user.email }}</view>
 				</view>
 			</view>
 			
@@ -90,7 +91,7 @@
 		computed: {
 			userInitial() {
 				if (!this.user) return 'U'
-				const name = this.userInfo.nickName || this.user.name || this.user.email || 'U'
+				const name = this.userInfo.nickName || this.user.name || '微'
 				return name[0].toUpperCase()
 			}
 		},
@@ -101,24 +102,41 @@
 			this.checkLogin()
 		},
 		methods: {
-			async checkLogin() {
-				try {
-					const res = await authAPI.getMe()
-					if (res.user) {
-						this.user = res.user
-						// 尝试从本地存储获取微信用户信息
-						const userInfo = uni.getStorageSync('wechatUserInfo')
-						if (userInfo) {
-							this.userInfo = userInfo
-						}
+			// 通过button的open-type获取用户信息（小程序推荐方式）
+			onGetUserInfo(e) {
+				console.log('通过button获取用户信息:', e)
+				let userInfo = {}
+				if (e.detail && e.detail.userInfo) {
+					// 用户同意授权
+					userInfo = {
+						nickName: e.detail.userInfo.nickName,
+						avatarUrl: e.detail.userInfo.avatarUrl,
+						gender: e.detail.userInfo.gender,
+						country: e.detail.userInfo.country,
+						province: e.detail.userInfo.province,
+						city: e.detail.userInfo.city
 					}
-				} catch (err) {
-					console.log('未登录')
-					this.user = null
+					console.log('解析后的用户信息:', userInfo)
+					console.log('昵称:', userInfo.nickName, '头像:', userInfo.avatarUrl)
+					// 保存用户信息到本地
+					uni.setStorageSync('wechatUserInfo', userInfo)
+					// 立即更新userInfo，确保UI能显示
+					this.userInfo = userInfo
+					console.log('设置后的this.userInfo:', this.userInfo)
+				} else {
+					// 用户拒绝授权
+					console.log('用户拒绝授权')
+					uni.showToast({
+						title: '需要授权才能获取昵称和头像',
+						icon: 'none',
+						duration: 2000
+					})
 				}
+				// 无论是否授权，都继续登录流程
+				this.handleWechatLoginWithInfo(userInfo)
 			},
 			
-			async handleWechatLogin() {
+			async handleWechatLoginWithInfo(userInfo) {
 				this.logging = true
 				try {
 					// 1. 获取微信登录code
@@ -134,42 +152,45 @@
 						throw new Error('获取微信登录code失败')
 					}
 					
-					// 2. 获取用户信息（需要用户授权）
-					let userInfo = {}
-					try {
-						const userInfoRes = await new Promise((resolve, reject) => {
-							uni.getUserProfile({
-								desc: '用于完善用户资料',
-								success: resolve,
-								fail: reject
-							})
-						})
-						userInfo = {
-							nickName: userInfoRes.userInfo.nickName,
-							avatarUrl: userInfoRes.userInfo.avatarUrl,
-							gender: userInfoRes.userInfo.gender,
-							country: userInfoRes.userInfo.country,
-							province: userInfoRes.userInfo.province,
-							city: userInfoRes.userInfo.city
-						}
-						// 保存用户信息到本地
-						uni.setStorageSync('wechatUserInfo', userInfo)
-						this.userInfo = userInfo
-					} catch (err) {
-						console.log('用户取消授权，使用基础信息')
-						// 用户取消授权，仍然可以使用code登录
-					}
+					console.log('获取登录code成功，开始调用登录API...')
+					console.log('使用的用户信息:', userInfo)
 					
-					// 3. 调用后端API进行登录
+					// 2. 调用后端API进行登录
 					const res = await authAPI.wechatLogin(loginRes.code, userInfo)
+					
+					console.log('登录API返回:', res)
+					
+					// 登录成功后，直接使用返回的用户信息
+					if (res && res.user) {
+						this.user = res.user
+						// 优先使用微信用户信息（即使昵称是"微信用户"也是有效的，这是模拟器的默认值）
+						// 在真机上会显示真实的微信昵称
+						if (userInfo && (userInfo.nickName || userInfo.avatarUrl)) {
+							this.userInfo = userInfo
+							console.log('使用微信用户信息，设置userInfo:', this.userInfo)
+						} else if (res.user.name) {
+							// 否则使用后端返回的用户名
+							this.userInfo = {
+								nickName: res.user.name
+							}
+							console.log('使用后端用户名，设置userInfo:', this.userInfo)
+						} else {
+							this.userInfo = {
+								nickName: '微信用户'
+							}
+							console.log('使用默认用户名，设置userInfo:', this.userInfo)
+						}
+						console.log('登录后最终userInfo:', this.userInfo)
+						console.log('登录后最终user:', this.user)
+					} else {
+						// 如果没有返回用户信息，则重新获取
+						await this.checkLogin()
+					}
 					
 					uni.showToast({
 						title: '登录成功',
 						icon: 'success'
 					})
-					
-					// 刷新用户信息
-					await this.checkLogin()
 				} catch (err) {
 					console.error('微信登录失败：', err)
 					uni.showToast({
@@ -181,6 +202,34 @@
 					this.logging = false
 				}
 			},
+			
+			async checkLogin() {
+				try {
+					const res = await authAPI.getMe()
+					console.log('getMe响应:', res)
+					if (res && res.user) {
+						this.user = res.user
+						// 优先从本地存储获取微信用户信息（包含昵称和头像）
+						const storedUserInfo = uni.getStorageSync('wechatUserInfo')
+						if (storedUserInfo && (storedUserInfo.nickName || storedUserInfo.avatarUrl)) {
+							this.userInfo = storedUserInfo
+						} else {
+							// 如果没有本地存储的信息，使用后端返回的用户名
+							this.userInfo = {
+								nickName: this.user.name || '微信用户'
+							}
+						}
+					} else {
+						this.user = null
+						this.userInfo = {}
+					}
+				} catch (err) {
+					console.error('检查登录状态失败:', err)
+					this.user = null
+					this.userInfo = {}
+				}
+			},
+			
 			
 			async handleLogout() {
 				uni.showModal({
@@ -199,9 +248,12 @@
 									icon: 'success'
 								})
 							} catch (err) {
+								// 即使API调用失败，也清除本地状态
+								this.user = null
+								this.userInfo = {}
 								uni.showToast({
-									title: '退出失败',
-									icon: 'none'
+									title: '已退出登录',
+									icon: 'success'
 								})
 							}
 						}

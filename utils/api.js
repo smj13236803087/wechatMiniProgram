@@ -4,31 +4,67 @@
 // 生产环境：需要修改为实际域名，例如：https://your-domain.com
 const BASE_URL = 'http://localhost:3000' // 请根据实际情况修改
 
+// Cookie存储（小程序中需要手动管理cookie）
+let storedCookies = {}
+
+// 从响应头中提取cookie
+function extractCookies(setCookieHeader) {
+  if (!setCookieHeader) return
+  const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader]
+  cookies.forEach(cookieStr => {
+    const parts = cookieStr.split(';')[0].split('=')
+    if (parts.length === 2) {
+      storedCookies[parts[0].trim()] = parts[1].trim()
+    }
+  })
+}
+
+// 生成Cookie请求头
+function getCookieHeader() {
+  return Object.entries(storedCookies)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('; ')
+}
+
 // 统一请求方法
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.header
+    }
+    
+    // 添加Cookie到请求头
+    const cookieHeader = getCookieHeader()
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader
+    }
+    
     uni.request({
       url: BASE_URL + url,
       method: options.method || 'GET',
       data: options.data || {},
-      header: {
-        'Content-Type': 'application/json',
-        ...options.header
-      },
-      // 小程序中需要手动处理cookie
-      withCredentials: true,
+      header: headers,
       success: (res) => {
-        // 处理响应中的cookie（如果需要）
+        // 处理响应中的cookie
+        if (res.header && res.header['Set-Cookie']) {
+          extractCookies(res.header['Set-Cookie'])
+        }
         if (res.cookies && res.cookies.length > 0) {
-          // 可以在这里处理cookie，但uni.request会自动处理
+          res.cookies.forEach(cookie => {
+            if (cookie.name && cookie.value) {
+              storedCookies[cookie.name] = cookie.value
+            }
+          })
         }
         
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
         } else {
-          // 处理401未授权，跳转到登录页
+          // 处理401未授权
           if (res.statusCode === 401) {
-            // 可以在这里统一处理未授权情况
+            // 清除cookie
+            storedCookies = {}
           }
           reject(new Error(res.data?.error || `请求失败: ${res.statusCode}`))
         }
@@ -39,6 +75,11 @@ function request(url, options = {}) {
       }
     })
   })
+}
+
+// 清除所有cookie（用于登出）
+export function clearCookies() {
+  storedCookies = {}
 }
 
 // 认证相关API
@@ -81,10 +122,15 @@ export const authAPI = {
   },
   
   // 登出
-  logout() {
-    return request('/api/auth/logout', {
-      method: 'POST'
-    })
+  async logout() {
+    try {
+      await request('/api/auth/logout', {
+        method: 'POST'
+      })
+    } finally {
+      // 清除本地cookie
+      clearCookies()
+    }
   }
 }
 

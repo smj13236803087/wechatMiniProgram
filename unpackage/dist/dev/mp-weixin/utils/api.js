@@ -1,36 +1,66 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
 const BASE_URL = "http://localhost:3000";
+let storedCookies = {};
+function extractCookies(setCookieHeader) {
+  if (!setCookieHeader)
+    return;
+  const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+  cookies.forEach((cookieStr) => {
+    const parts = cookieStr.split(";")[0].split("=");
+    if (parts.length === 2) {
+      storedCookies[parts[0].trim()] = parts[1].trim();
+    }
+  });
+}
+function getCookieHeader() {
+  return Object.entries(storedCookies).map(([key, value]) => `${key}=${value}`).join("; ");
+}
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
+    const headers = {
+      "Content-Type": "application/json",
+      ...options.header
+    };
+    const cookieHeader = getCookieHeader();
+    if (cookieHeader) {
+      headers["Cookie"] = cookieHeader;
+    }
     common_vendor.index.request({
       url: BASE_URL + url,
       method: options.method || "GET",
       data: options.data || {},
-      header: {
-        "Content-Type": "application/json",
-        ...options.header
-      },
-      // 小程序中需要手动处理cookie
-      withCredentials: true,
+      header: headers,
       success: (res) => {
         var _a;
-        if (res.cookies && res.cookies.length > 0)
-          ;
+        if (res.header && res.header["Set-Cookie"]) {
+          extractCookies(res.header["Set-Cookie"]);
+        }
+        if (res.cookies && res.cookies.length > 0) {
+          res.cookies.forEach((cookie) => {
+            if (cookie.name && cookie.value) {
+              storedCookies[cookie.name] = cookie.value;
+            }
+          });
+        }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
         } else {
-          if (res.statusCode === 401)
-            ;
+          if (res.statusCode === 401) {
+            storedCookies = {};
+          }
           reject(new Error(((_a = res.data) == null ? void 0 : _a.error) || `请求失败: ${res.statusCode}`));
         }
       },
       fail: (err) => {
-        common_vendor.index.__f__("error", "at utils/api.js:37", "请求失败:", err);
+        common_vendor.index.__f__("error", "at utils/api.js:73", "请求失败:", err);
         reject(new Error(err.errMsg || "网络请求失败"));
       }
     });
   });
+}
+function clearCookies() {
+  storedCookies = {};
 }
 const authAPI = {
   // 微信登录
@@ -66,10 +96,14 @@ const authAPI = {
     return request("/api/auth/me");
   },
   // 登出
-  logout() {
-    return request("/api/auth/logout", {
-      method: "POST"
-    });
+  async logout() {
+    try {
+      await request("/api/auth/logout", {
+        method: "POST"
+      });
+    } finally {
+      clearCookies();
+    }
   }
 };
 const designAPI = {
