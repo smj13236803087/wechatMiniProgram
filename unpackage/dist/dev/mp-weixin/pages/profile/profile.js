@@ -26,7 +26,7 @@ const _sfc_main = {
   methods: {
     // 通过button的open-type获取用户信息（小程序推荐方式）
     onGetUserInfo(e) {
-      common_vendor.index.__f__("log", "at pages/profile/profile.vue:107", "通过button获取用户信息:", e);
+      common_vendor.index.__f__("log", "at pages/profile/profile.vue:116", "通过button获取用户信息:", e);
       let userInfo = {};
       if (e.detail && e.detail.userInfo) {
         userInfo = {
@@ -37,13 +37,13 @@ const _sfc_main = {
           province: e.detail.userInfo.province,
           city: e.detail.userInfo.city
         };
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:119", "解析后的用户信息:", userInfo);
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:120", "昵称:", userInfo.nickName, "头像:", userInfo.avatarUrl);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:128", "解析后的用户信息:", userInfo);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:129", "昵称:", userInfo.nickName, "头像:", userInfo.avatarUrl);
         common_vendor.index.setStorageSync("wechatUserInfo", userInfo);
         this.userInfo = userInfo;
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:125", "设置后的this.userInfo:", this.userInfo);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:134", "设置后的this.userInfo:", this.userInfo);
       } else {
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:128", "用户拒绝授权");
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:137", "用户拒绝授权");
         common_vendor.index.showToast({
           title: "需要授权才能获取昵称和头像",
           icon: "none",
@@ -65,28 +65,28 @@ const _sfc_main = {
         if (!loginRes.code) {
           throw new Error("获取微信登录code失败");
         }
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:155", "获取登录code成功，开始调用登录API...");
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:156", "使用的用户信息:", userInfo);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:164", "获取登录code成功，开始调用登录API...");
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:165", "使用的用户信息:", userInfo);
         const res = await utils_api.authAPI.wechatLogin(loginRes.code, userInfo);
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:161", "登录API返回:", res);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:170", "登录API返回:", res);
         if (res && res.user) {
           this.user = res.user;
           if (userInfo && (userInfo.nickName || userInfo.avatarUrl)) {
             this.userInfo = userInfo;
-            common_vendor.index.__f__("log", "at pages/profile/profile.vue:170", "使用微信用户信息，设置userInfo:", this.userInfo);
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:179", "使用微信用户信息，设置userInfo:", this.userInfo);
           } else if (res.user.name) {
             this.userInfo = {
               nickName: res.user.name
             };
-            common_vendor.index.__f__("log", "at pages/profile/profile.vue:176", "使用后端用户名，设置userInfo:", this.userInfo);
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:185", "使用后端用户名，设置userInfo:", this.userInfo);
           } else {
             this.userInfo = {
               nickName: "微信用户"
             };
-            common_vendor.index.__f__("log", "at pages/profile/profile.vue:181", "使用默认用户名，设置userInfo:", this.userInfo);
+            common_vendor.index.__f__("log", "at pages/profile/profile.vue:190", "使用默认用户名，设置userInfo:", this.userInfo);
           }
-          common_vendor.index.__f__("log", "at pages/profile/profile.vue:183", "登录后最终userInfo:", this.userInfo);
-          common_vendor.index.__f__("log", "at pages/profile/profile.vue:184", "登录后最终user:", this.user);
+          common_vendor.index.__f__("log", "at pages/profile/profile.vue:192", "登录后最终userInfo:", this.userInfo);
+          common_vendor.index.__f__("log", "at pages/profile/profile.vue:193", "登录后最终user:", this.user);
         } else {
           await this.checkLogin();
         }
@@ -95,7 +95,7 @@ const _sfc_main = {
           icon: "success"
         });
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/profile/profile.vue:195", "微信登录失败：", err);
+        common_vendor.index.__f__("error", "at pages/profile/profile.vue:204", "微信登录失败：", err);
         common_vendor.index.showToast({
           title: err.message || "登录失败，请重试",
           icon: "none",
@@ -108,7 +108,7 @@ const _sfc_main = {
     async checkLogin() {
       try {
         const res = await utils_api.authAPI.getMe();
-        common_vendor.index.__f__("log", "at pages/profile/profile.vue:209", "getMe响应:", res);
+        common_vendor.index.__f__("log", "at pages/profile/profile.vue:218", "getMe响应:", res);
         if (res && res.user) {
           this.user = res.user;
           const storedUserInfo = common_vendor.index.getStorageSync("wechatUserInfo");
@@ -124,7 +124,7 @@ const _sfc_main = {
           this.userInfo = {};
         }
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/profile/profile.vue:227", "检查登录状态失败:", err);
+        common_vendor.index.__f__("error", "at pages/profile/profile.vue:236", "检查登录状态失败:", err);
         this.user = null;
         this.userInfo = {};
       }
@@ -166,6 +166,11 @@ const _sfc_main = {
         url: "/pages/portfolio/portfolio"
       });
     },
+    goToOrders() {
+      common_vendor.index.navigateTo({
+        url: "/pages/orders/orders"
+      });
+    },
     goToAddresses() {
       common_vendor.index.navigateTo({
         url: "/pages/address/address"
@@ -195,8 +200,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : {}, {
     k: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
     l: common_vendor.o((...args) => $options.goToPortfolio && $options.goToPortfolio(...args)),
-    m: common_vendor.o((...args) => $options.goToAddresses && $options.goToAddresses(...args)),
-    n: common_vendor.o((...args) => $options.handleLogout && $options.handleLogout(...args))
+    m: common_vendor.o((...args) => $options.goToOrders && $options.goToOrders(...args)),
+    n: common_vendor.o((...args) => $options.goToAddresses && $options.goToAddresses(...args)),
+    o: common_vendor.o((...args) => $options.handleLogout && $options.handleLogout(...args))
   }));
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-dd383ca2"]]);

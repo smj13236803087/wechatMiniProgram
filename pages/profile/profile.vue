@@ -59,6 +59,15 @@
 					<text class="menu-arrow">›</text>
 				</view>
 				
+				<view class="menu-item" @click="goToOrders">
+					<view class="menu-icon">📦</view>
+					<view class="menu-content">
+						<view class="menu-title">我的订单</view>
+						<view class="menu-desc">查看订单与物流状态</view>
+					</view>
+					<text class="menu-arrow">›</text>
+				</view>
+				
 				<view class="menu-item" @click="goToAddresses">
 					<view class="menu-icon">📍</view>
 					<view class="menu-content">
@@ -270,6 +279,12 @@
 			goToPortfolio() {
 				uni.navigateTo({
 					url: '/pages/portfolio/portfolio'
+				})
+			},
+			
+			goToOrders() {
+				uni.navigateTo({
+					url: '/pages/orders/orders'
 				})
 			},
 			

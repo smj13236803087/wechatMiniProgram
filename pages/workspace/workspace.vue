@@ -1,7 +1,5 @@
 <template>
 	<view class="container">
-		<view class="title">工作台</view>
-		
 		<!-- 手腕尺寸设置弹窗 -->
 		<view v-if="showWristSizeModal" class="modal-overlay" @click="closeModal">
 			<view class="modal-content" @click.stop>
@@ -72,10 +70,9 @@
 					
 					<!-- 右侧信息（手围、价格等） -->
 					<view class="info-section-right">
-						<view class="wrist-info" @click="showWristSizeModal = true">
+						<view class="wrist-info">
 							<text class="wrist-label">手围：{{ wristSize }}cm</text>
 							<text class="wrist-style">{{ wearingStyle === 'single' ? '单圈' : '双圈' }}</text>
-							<text class="wrist-edit">✏️</text>
 						</view>
 						<view class="price-info">
 							<text class="price-label">总价：</text>
@@ -521,18 +518,18 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 						this.categorizedProducts[category.key].products.length > 0
 				})
 			},
-			// 预览尺寸（像素）- 用于计算（缩小预览区域）
+			// 预览尺寸（像素）- 用于计算
 			previewSize() {
-				// 预览区域缩小到 200px
-				return 200
+				// 放大预览区域到 260px，使手串更易点击
+				return 260
 			},
 			// 预览尺寸（像素）- 用于样式（rpx转px）
 			previewSizePx() {
 				// 获取系统信息，计算实际像素值
 				const systemInfo = uni.getSystemInfoSync()
 				const screenWidth = systemInfo.screenWidth
-				// 预览区域缩小到 400rpx
-				return (400 / 750) * screenWidth
+				// 预览区域放大到 500rpx，使视觉更大
+				return (500 / 750) * screenWidth
 			},
 			// 中心点坐标
 			centerX() {
@@ -543,7 +540,8 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 			},
 			// 基础半径
 			radius() {
-				return this.previewSize * 0.3
+				// 稍微放大圆半径，让手串占据更多空间
+				return this.previewSize * 0.35
 			},
 			// 默认直径（毫米）
 			defaultDiameter() {
@@ -551,7 +549,8 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 			},
 			// 毫米转像素比例
 			mmToPx() {
-				return 2.5
+				// 放大珠子尺寸，提升可点击性
+				return 3.0
 			},
 			// 最大和最小缩放因子
 			maxPreferredScale() {
@@ -660,7 +659,11 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 		},
 		onLoad(options) {
 			if (options.designId) {
+				// 编辑已有作品：加载作品并使用已有手围配置
 				this.loadDesign(options.designId)
+			} else {
+				// 新建作品：首次进入时要求设置手围
+				this.showWristSizeModal = true
 			}
 			this.fetchProducts()
 			// 延迟初始化 canvas，确保 DOM 已渲染
@@ -1495,15 +1498,8 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 <style scoped>
 	.container {
 		min-height: 100vh;
-		background: #f3f4f6;
-		padding: 20rpx;
-	}
-	
-	.title {
-		font-size: 48rpx;
-		font-weight: bold;
-		color: #1f2937;
-		margin-bottom: 20rpx;
+		background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 40%, #f3e8ff 100%);
+		padding: 24rpx;
 	}
 	
 	.modal-overlay {
@@ -1599,10 +1595,10 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 	}
 	
 	.preview-panel-fixed {
-		background: #ffffff;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 16rpx 20rpx 20rpx 20rpx; /* 进一步减小边距，压缩高度 */
-		box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.1);
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 32rpx;
+		padding: 20rpx 24rpx 24rpx 24rpx;
+		box-shadow: 0 12rpx 40rpx rgba(31, 41, 55, 0.18);
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
@@ -1816,8 +1812,8 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 	}
 	
 	.canvas-container {
-		width: 400rpx;
-		height: 400rpx;
+		width: 500rpx;
+		height: 500rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1924,8 +1920,8 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 		height: 66.67vh; /* 占屏幕三分之二高度 */
 		display: flex;
 		flex-direction: column;
-		background: #ffffff;
-		border-radius: 0 0 24rpx 24rpx;
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 24rpx;
 		overflow: hidden;
 	}
 	

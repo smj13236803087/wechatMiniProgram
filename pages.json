@@ -43,6 +43,12 @@
 			}
 		},
 		{
+			"path": "pages/orders/orders",
+			"style": {
+				"navigationBarTitleText": "我的订单"
+			}
+		},
+		{
 			"path": "pages/cashier/cashier",
 			"style": {
 				"navigationBarTitleText": "收银台"

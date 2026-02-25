@@ -1,14 +1,8 @@
 
 .container.data-v-245b3c15 {
 		min-height: 100vh;
-		background: #f3f4f6;
-		padding: 20rpx;
-}
-.title.data-v-245b3c15 {
-		font-size: 48rpx;
-		font-weight: bold;
-		color: #1f2937;
-		margin-bottom: 20rpx;
+		background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 40%, #f3e8ff 100%);
+		padding: 24rpx;
 }
 .modal-overlay.data-v-245b3c15 {
 		position: fixed;
@@ -92,10 +86,10 @@
 		overflow: hidden;
 }
 .preview-panel-fixed.data-v-245b3c15 {
-		background: #ffffff;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 16rpx 20rpx 20rpx 20rpx; /* 进一步减小边距，压缩高度 */
-		box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.1);
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 32rpx;
+		padding: 20rpx 24rpx 24rpx 24rpx;
+		box-shadow: 0 12rpx 40rpx rgba(31, 41, 55, 0.18);
 		display: flex;
 		flex-direction: column;
 		flex-shrink: 0;
@@ -277,8 +271,8 @@
 		color: #16a34a;
 }
 .canvas-container.data-v-245b3c15 {
-		width: 400rpx;
-		height: 400rpx;
+		width: 500rpx;
+		height: 500rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -374,8 +368,8 @@
 		height: 66.67vh; /* 占屏幕三分之二高度 */
 		display: flex;
 		flex-direction: column;
-		background: #ffffff;
-		border-radius: 0 0 24rpx 24rpx;
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 24rpx;
 		overflow: hidden;
 }
 	

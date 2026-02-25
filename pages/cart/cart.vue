@@ -1,10 +1,5 @@
 <template>
 	<view class="container">
-		<view class="header">
-			<view class="title">购物车</view>
-			<view class="subtitle">这里是你加入的手串作品快照</view>
-		</view>
-		
 		<view v-if="loading" class="state-card">
 			<text class="state-text">正在加载购物车...</text>
 		</view>

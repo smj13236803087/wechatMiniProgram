@@ -87,15 +87,15 @@ const _sfc_main = {
         return category && category.key && this.categorizedProducts[category.key] && this.categorizedProducts[category.key].products && this.categorizedProducts[category.key].products.length > 0;
       });
     },
-    // 预览尺寸（像素）- 用于计算（缩小预览区域）
+    // 预览尺寸（像素）- 用于计算
     previewSize() {
-      return 200;
+      return 260;
     },
     // 预览尺寸（像素）- 用于样式（rpx转px）
     previewSizePx() {
       const systemInfo = common_vendor.index.getSystemInfoSync();
       const screenWidth = systemInfo.screenWidth;
-      return 400 / 750 * screenWidth;
+      return 500 / 750 * screenWidth;
     },
     // 中心点坐标
     centerX() {
@@ -106,7 +106,7 @@ const _sfc_main = {
     },
     // 基础半径
     radius() {
-      return this.previewSize * 0.3;
+      return this.previewSize * 0.35;
     },
     // 默认直径（毫米）
     defaultDiameter() {
@@ -114,7 +114,7 @@ const _sfc_main = {
     },
     // 毫米转像素比例
     mmToPx() {
-      return 2.5;
+      return 3;
     },
     // 最大和最小缩放因子
     maxPreferredScale() {
@@ -220,6 +220,8 @@ const _sfc_main = {
   onLoad(options) {
     if (options.designId) {
       this.loadDesign(options.designId);
+    } else {
+      this.showWristSizeModal = true;
     }
     this.fetchProducts();
     this.$nextTick(() => {
@@ -287,7 +289,7 @@ const _sfc_main = {
         this.categorizedProducts = utils_bracelet.categorizeProducts(products);
       } catch (err) {
         this.error = err.message || "拉取商品失败";
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:733", "拉取商品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:736", "拉取商品失败：", err);
         this.categorizedProducts = null;
       } finally {
         this.loading = false;
@@ -307,7 +309,7 @@ const _sfc_main = {
           this.currentDesignId = design.id;
         }
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:754", "加载作品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:757", "加载作品失败：", err);
         common_vendor.index.showToast({
           title: "加载作品失败",
           icon: "none"
@@ -913,23 +915,22 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   }), {
     w: common_vendor.t($data.wristSize),
     x: common_vendor.t($data.wearingStyle === "single" ? "单圈" : "双圈"),
-    y: common_vendor.o(($event) => $data.showWristSizeModal = true),
-    z: common_vendor.t($options.totalPrice),
-    A: common_vendor.t($data.items.length),
-    B: $data.dragState.isDragging && $data.dragState.isOverDeleteZone ? 1 : "",
-    C: $data.activeMainTab === "bead" ? 1 : "",
-    D: common_vendor.o(($event) => $data.activeMainTab = "bead"),
-    E: $data.activeMainTab === "accessory" ? 1 : "",
-    F: common_vendor.o(($event) => $data.activeMainTab = "accessory"),
-    G: $data.activeMainTab === "pendant" ? 1 : "",
-    H: common_vendor.o(($event) => $data.activeMainTab = "pendant"),
-    I: $data.loading
+    y: common_vendor.t($options.totalPrice),
+    z: common_vendor.t($data.items.length),
+    A: $data.dragState.isDragging && $data.dragState.isOverDeleteZone ? 1 : "",
+    B: $data.activeMainTab === "bead" ? 1 : "",
+    C: common_vendor.o(($event) => $data.activeMainTab = "bead"),
+    D: $data.activeMainTab === "accessory" ? 1 : "",
+    E: common_vendor.o(($event) => $data.activeMainTab = "accessory"),
+    F: $data.activeMainTab === "pendant" ? 1 : "",
+    G: common_vendor.o(($event) => $data.activeMainTab = "pendant"),
+    H: $data.loading
   }, $data.loading ? {} : $data.error ? {
-    K: common_vendor.t($data.error)
+    J: common_vendor.t($data.error)
   } : !$data.categorizedProducts ? {} : common_vendor.e({
-    M: $data.activeMainTab === "bead"
+    L: $data.activeMainTab === "bead"
   }, $data.activeMainTab === "bead" ? common_vendor.e({
-    N: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
+    M: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: common_vendor.t(((_a2 = $data.categorizedProducts[category.key]) == null ? void 0 : _a2.name) || ""),
@@ -938,9 +939,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         d: common_vendor.o(($event) => $data.activeBeadSubTab = category.key, category.key)
       };
     }),
-    O: $data.activeBeadSubTab && $data.categorizedProducts[$data.activeBeadSubTab] && $data.categorizedProducts[$data.activeBeadSubTab].products
+    N: $data.activeBeadSubTab && $data.categorizedProducts[$data.activeBeadSubTab] && $data.categorizedProducts[$data.activeBeadSubTab].products
   }, $data.activeBeadSubTab && $data.categorizedProducts[$data.activeBeadSubTab] && $data.categorizedProducts[$data.activeBeadSubTab].products ? {
-    P: common_vendor.f($data.categorizedProducts[$data.activeBeadSubTab].products, (product, k0, i0) => {
+    O: common_vendor.f($data.categorizedProducts[$data.activeBeadSubTab].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -950,9 +951,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : {}, {
-    Q: $data.activeMainTab === "accessory"
+    P: $data.activeMainTab === "accessory"
   }, $data.activeMainTab === "accessory" ? common_vendor.e({
-    R: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
+    Q: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: common_vendor.t(((_a2 = $data.categorizedProducts[category.key]) == null ? void 0 : _a2.name) || ""),
@@ -961,9 +962,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         d: common_vendor.o(($event) => $data.activeAccessorySubTab = category.key, category.key)
       };
     }),
-    S: $data.activeAccessorySubTab && $data.categorizedProducts[$data.activeAccessorySubTab] && $data.categorizedProducts[$data.activeAccessorySubTab].products
+    R: $data.activeAccessorySubTab && $data.categorizedProducts[$data.activeAccessorySubTab] && $data.categorizedProducts[$data.activeAccessorySubTab].products
   }, $data.activeAccessorySubTab && $data.categorizedProducts[$data.activeAccessorySubTab] && $data.categorizedProducts[$data.activeAccessorySubTab].products ? {
-    T: common_vendor.f($data.categorizedProducts[$data.activeAccessorySubTab].products, (product, k0, i0) => {
+    S: common_vendor.f($data.categorizedProducts[$data.activeAccessorySubTab].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -973,11 +974,11 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : {}, {
-    U: $data.activeMainTab === "pendant"
+    T: $data.activeMainTab === "pendant"
   }, $data.activeMainTab === "pendant" ? common_vendor.e({
-    V: $data.categorizedProducts.pendant && $data.categorizedProducts.pendant.products
+    U: $data.categorizedProducts.pendant && $data.categorizedProducts.pendant.products
   }, $data.categorizedProducts.pendant && $data.categorizedProducts.pendant.products ? {
-    W: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
+    V: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -987,29 +988,29 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : {}), {
-    J: $data.error,
-    L: !$data.categorizedProducts,
-    X: $data.designName,
-    Y: common_vendor.o(($event) => $data.designName = $event.detail.value),
-    Z: common_vendor.t($data.saving ? "保存中..." : "仅保存"),
-    aa: $data.items.length === 0 || $data.saving || $data.processingOrder,
-    ab: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args)),
-    ac: common_vendor.t($data.processingOrder ? "处理中..." : "完成"),
-    ad: $data.items.length === 0 || $data.processingOrder,
-    ae: common_vendor.o((...args) => $options.completeAndGoToCashier && $options.completeAndGoToCashier(...args)),
-    af: $data.loading
+    I: $data.error,
+    K: !$data.categorizedProducts,
+    W: $data.designName,
+    X: common_vendor.o(($event) => $data.designName = $event.detail.value),
+    Y: common_vendor.t($data.saving ? "保存中..." : "仅保存"),
+    Z: $data.items.length === 0 || $data.saving || $data.processingOrder,
+    aa: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args)),
+    ab: common_vendor.t($data.processingOrder ? "处理中..." : "完成"),
+    ac: $data.items.length === 0 || $data.processingOrder,
+    ad: common_vendor.o((...args) => $options.completeAndGoToCashier && $options.completeAndGoToCashier(...args)),
+    ae: $data.loading
   }, $data.loading ? {} : $data.error ? {
-    ah: common_vendor.t($data.error)
+    ag: common_vendor.t($data.error)
   } : !$data.categorizedProducts ? {} : common_vendor.e({
-    aj: $data.beadStep !== "category"
+    ai: $data.beadStep !== "category"
   }, $data.beadStep !== "category" ? {
-    ak: common_vendor.o((...args) => $options.resetBeadSelection && $options.resetBeadSelection(...args))
+    aj: common_vendor.o((...args) => $options.resetBeadSelection && $options.resetBeadSelection(...args))
   } : {}, {
-    al: $data.beadStep === "category"
+    ak: $data.beadStep === "category"
   }, $data.beadStep === "category" ? common_vendor.e({
-    am: $data.categorizedProducts && $options.validBeadCategories.length > 0
+    al: $data.categorizedProducts && $options.validBeadCategories.length > 0
   }, $data.categorizedProducts && $options.validBeadCategories.length > 0 ? {
-    an: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
+    am: common_vendor.f($options.validBeadCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: $options.getCategoryImage(category.key),
@@ -1019,13 +1020,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : common_vendor.e({
-    ao: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory]
+    an: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory]
   }, $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] ? {
-    ap: common_vendor.t(((_a = $data.categorizedProducts[$data.selectedBeadCategory]) == null ? void 0 : _a.name) || "")
+    ao: common_vendor.t(((_a = $data.categorizedProducts[$data.selectedBeadCategory]) == null ? void 0 : _a.name) || "")
   } : {}, {
-    aq: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products
+    ap: $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products
   }, $data.selectedBeadCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedBeadCategory] && $data.categorizedProducts[$data.selectedBeadCategory].products ? {
-    ar: common_vendor.f($data.categorizedProducts[$data.selectedBeadCategory].products, (product, k0, i0) => {
+    aq: common_vendor.f($data.categorizedProducts[$data.selectedBeadCategory].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -1035,15 +1036,15 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}), {
-    as: $data.accessoryStep !== "category"
+    ar: $data.accessoryStep !== "category"
   }, $data.accessoryStep !== "category" ? {
-    at: common_vendor.o((...args) => $options.resetAccessorySelection && $options.resetAccessorySelection(...args))
+    as: common_vendor.o((...args) => $options.resetAccessorySelection && $options.resetAccessorySelection(...args))
   } : {}, {
-    av: $data.accessoryStep === "category"
+    at: $data.accessoryStep === "category"
   }, $data.accessoryStep === "category" ? common_vendor.e({
-    aw: $data.categorizedProducts && $options.validAccessoryCategories.length > 0
+    av: $data.categorizedProducts && $options.validAccessoryCategories.length > 0
   }, $data.categorizedProducts && $options.validAccessoryCategories.length > 0 ? {
-    ax: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
+    aw: common_vendor.f($options.validAccessoryCategories, (category, k0, i0) => {
       var _a2;
       return {
         a: $options.getCategoryImage(category.key),
@@ -1053,13 +1054,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}) : common_vendor.e({
-    ay: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory]
+    ax: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory]
   }, $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] ? {
-    az: common_vendor.t(((_b = $data.categorizedProducts[$data.selectedAccessoryCategory]) == null ? void 0 : _b.name) || "")
+    ay: common_vendor.t(((_b = $data.categorizedProducts[$data.selectedAccessoryCategory]) == null ? void 0 : _b.name) || "")
   } : {}, {
-    aA: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products
+    az: $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products
   }, $data.selectedAccessoryCategory && $data.categorizedProducts && $data.categorizedProducts[$data.selectedAccessoryCategory] && $data.categorizedProducts[$data.selectedAccessoryCategory].products ? {
-    aB: common_vendor.f($data.categorizedProducts[$data.selectedAccessoryCategory].products, (product, k0, i0) => {
+    aA: common_vendor.f($data.categorizedProducts[$data.selectedAccessoryCategory].products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -1069,9 +1070,9 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   } : {}), {
-    aC: !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0
+    aB: !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0
   }, !$data.categorizedProducts || !$data.categorizedProducts.pendant || !$data.categorizedProducts.pendant.products || $data.categorizedProducts.pendant.products.length === 0 ? {} : {
-    aD: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
+    aC: common_vendor.f($data.categorizedProducts.pendant.products, (product, k0, i0) => {
       return {
         a: $options.getProductImage(product),
         b: common_vendor.t(product.title),
@@ -1081,16 +1082,16 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   }, {
-    aE: $data.designName,
-    aF: common_vendor.o(($event) => $data.designName = $event.detail.value),
-    aG: common_vendor.t($data.saving ? "保存中..." : "保存到我的作品集"),
-    aH: $data.items.length === 0 || $data.saving,
-    aI: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args))
+    aD: $data.designName,
+    aE: common_vendor.o(($event) => $data.designName = $event.detail.value),
+    aF: common_vendor.t($data.saving ? "保存中..." : "保存到我的作品集"),
+    aG: $data.items.length === 0 || $data.saving,
+    aH: common_vendor.o((...args) => $options.saveDesign && $options.saveDesign(...args))
   }), {
-    ag: $data.error,
-    ai: !$data.categorizedProducts,
-    aJ: !$data.dragState.isDragging,
-    aK: !$data.dragState.isDragging
+    af: $data.error,
+    ah: !$data.categorizedProducts,
+    aI: !$data.dragState.isDragging,
+    aJ: !$data.dragState.isDragging
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-245b3c15"]]);
