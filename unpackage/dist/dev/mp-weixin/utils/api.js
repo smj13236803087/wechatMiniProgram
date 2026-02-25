@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:4000";
 let storedCookies = {};
 function extractCookies(setCookieHeader) {
   if (!setCookieHeader)
@@ -137,9 +137,9 @@ const designAPI = {
   }
 };
 const productAPI = {
-  // 获取Shopify商品列表
+  // 获取商品列表（从 mini-program-backstage 的 Product 表拉取）
   getProducts() {
-    return request("/api/shopify/products");
+    return request("/api/products");
   }
 };
 const addressAPI = {

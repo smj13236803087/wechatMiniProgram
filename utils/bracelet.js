@@ -32,7 +32,7 @@ export function parseWeight(weightStr) {
   return undefined
 }
 
-// 从Shopify商品中获取图片
+// 从商品数据中获取图片
 export function getProductImage(product) {
   if (product.image && product.image.src) {
     return product.image.src
@@ -85,7 +85,7 @@ export function getProductWeight(product) {
   return null
 }
 
-// 将Shopify商品按product_type分类
+// 将商品按 product_type 分类
 export function categorizeProducts(products) {
   const categorized = {
     obsidian: { category: 'obsidian', name: '曜石', products: [] },

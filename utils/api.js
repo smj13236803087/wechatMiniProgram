@@ -1,8 +1,8 @@
 // API工具类
 // 注意：需要根据实际情况修改BASE_URL
-// 开发环境：http://localhost:3000
+// 开发环境：http://localhost:4000
 // 生产环境：需要修改为实际域名，例如：https://your-domain.com
-const BASE_URL = 'http://localhost:3000' // 请根据实际情况修改
+const BASE_URL = 'http://localhost:4000'
 
 // Cookie存储（小程序中需要手动管理cookie）
 let storedCookies = {}
@@ -172,9 +172,9 @@ export const designAPI = {
 
 // 商品相关API
 export const productAPI = {
-  // 获取Shopify商品列表
+  // 获取商品列表（从 mini-program-backstage 的 Product 表拉取）
   getProducts() {
-    return request('/api/shopify/products')
+    return request('/api/products')
   }
 }
 
