@@ -6,7 +6,8 @@
     "pages/profile/profile",
     "pages/workspace/workspace",
     "pages/portfolio/portfolio",
-    "pages/address/address"
+    "pages/address/address",
+    "pages/cashier/cashier"
   ],
   "window": {
     "navigationBarTextStyle": "black",

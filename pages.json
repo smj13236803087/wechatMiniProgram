@@ -41,6 +41,12 @@
 			"style": {
 				"navigationBarTitleText": "我的地址"
 			}
+		},
+		{
+			"path": "pages/cashier/cashier",
+			"style": {
+				"navigationBarTitleText": "收银台"
+			}
 		}
 	],
 	"globalStyle": {

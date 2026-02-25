@@ -39,7 +39,7 @@ const _sfc_main = {
           title: "加载失败",
           icon: "none"
         });
-        common_vendor.index.__f__("error", "at pages/portfolio/portfolio.vue:113", err);
+        common_vendor.index.__f__("error", "at pages/portfolio/portfolio.vue:102", err);
       } finally {
         this.loading = false;
       }
@@ -52,13 +52,13 @@ const _sfc_main = {
         }
       });
     },
-    // 绘制单个预览图
+    // 绘制单个预览图（确保所有珠子完整展示）
     drawPreview(design) {
       const canvasId = "preview-" + design.id;
       const ctx = common_vendor.index.createCanvasContext(canvasId, this);
       const systemInfo = common_vendor.index.getSystemInfoSync();
       const screenWidth = systemInfo.screenWidth;
-      const size = 320 / 750 * screenWidth;
+      const size = 260 / 750 * screenWidth;
       const centerX = size / 2;
       const centerY = size / 2;
       ctx.clearRect(0, 0, size, size);
@@ -67,10 +67,25 @@ const _sfc_main = {
         ctx.draw();
         return;
       }
-      const beadRadius = 10;
-      const minCircumference = items.length * beadRadius * 2;
+      const baseBeadRadius = 10;
+      const margin = 4;
+      const maxRadius = size / 2 - baseBeadRadius - margin;
+      if (maxRadius <= 0) {
+        ctx.draw();
+        return;
+      }
+      const minCircumference = items.length * baseBeadRadius * 2;
       const minRadius = minCircumference / (2 * Math.PI);
-      const radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25);
+      let beadRadius = baseBeadRadius;
+      let radius;
+      if (minRadius <= maxRadius) {
+        radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25);
+        radius = Math.min(radius, maxRadius);
+      } else {
+        const scale = maxRadius / minRadius;
+        beadRadius = baseBeadRadius * scale;
+        radius = maxRadius;
+      }
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       ctx.setStrokeStyle("#e5e7eb");
@@ -135,12 +150,11 @@ const _sfc_main = {
 };
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return common_vendor.e({
-    a: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
-    b: $data.loading
+    a: $data.loading
   }, $data.loading ? {} : $data.designs.length === 0 ? {
-    d: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args))
+    c: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args))
   } : {
-    e: common_vendor.f($data.designs, (design, k0, i0) => {
+    d: common_vendor.f($data.designs, (design, k0, i0) => {
       var _a;
       return {
         a: "preview-" + design.id,
@@ -156,7 +170,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       };
     })
   }, {
-    c: $data.designs.length === 0
+    b: $data.designs.length === 0
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-eea16c96"]]);

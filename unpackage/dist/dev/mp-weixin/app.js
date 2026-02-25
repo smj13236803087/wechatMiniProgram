@@ -9,6 +9,7 @@ if (!Math) {
   "./pages/workspace/workspace.js";
   "./pages/portfolio/portfolio.js";
   "./pages/address/address.js";
+  "./pages/cashier/cashier.js";
 }
 const _sfc_main = {
   onLaunch: function() {

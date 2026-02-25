@@ -246,13 +246,22 @@
 								class="save-input"
 							/>
 						</view>
-						<button 
-							class="save-btn-compact" 
-							:disabled="items.length === 0 || saving"
-							@click="saveDesign"
-						>
-							{{ saving ? '保存中...' : '保存' }}
-						</button>
+						<view class="save-btn-group">
+							<button 
+								class="save-btn-compact secondary" 
+								:disabled="items.length === 0 || saving || processingOrder"
+								@click="saveDesign"
+							>
+								{{ saving ? '保存中...' : '仅保存' }}
+							</button>
+							<button 
+								class="save-btn-compact" 
+								:disabled="items.length === 0 || processingOrder"
+								@click="completeAndGoToCashier"
+							>
+								{{ processingOrder ? '处理中...' : '完成' }}
+							</button>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -418,7 +427,7 @@
 </template>
 
 <script>
-	import { productAPI, designAPI } from '@/utils/api.js'
+import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 	import { 
 		categorizeProducts, 
 		getProductImage, 
@@ -481,7 +490,9 @@
 					{ key: 'cutoff', category: 'spacer' },
 					{ key: 'running-laps', category: 'decoration' },
 					{ key: 'double-pointed-crystal', category: 'doubleTerminated' }
-				]
+				],
+				// 下单 / 收银台流程状态
+				processingOrder: false
 			}
 		},
 		computed: {
@@ -1405,6 +1416,76 @@
 					})
 				} finally {
 					this.saving = false
+				}
+			},
+			
+			// 完成并前往收银台
+			async completeAndGoToCashier() {
+				if (this.processingOrder) return
+				if (!this.items.length) {
+					uni.showToast({
+						title: '请先设计手串再完成～',
+						icon: 'none'
+					})
+					return
+				}
+				if (!this.wristSize || !this.wearingStyle) {
+					uni.showToast({
+						title: '请先完成手腕尺寸设置～',
+						icon: 'none'
+					})
+					this.showWristSizeModal = true
+					return
+				}
+				const trimmed = this.designName.trim()
+				if (!trimmed) {
+					uni.showToast({
+						title: '请先输入作品名称',
+						icon: 'none'
+					})
+					return
+				}
+				
+				this.processingOrder = true
+				try {
+					// 先保存设计，确保有设计ID
+					const totalWeight = this.items.reduce((sum, item) => sum + (item.weight || 0), 0)
+					const diameters = this.items.map(i => i.diameter).filter(d => !!d)
+					const averageDiameter = diameters.length > 0
+						? diameters.reduce((a, b) => a + b, 0) / diameters.length
+						: null
+					
+					const designData = {
+						id: this.currentDesignId || undefined,
+						name: trimmed,
+						items: this.items,
+						totalPrice: this.totalPrice,
+						totalWeight: totalWeight,
+						averageDiameter: averageDiameter,
+						wristSize: this.wristSize,
+						wearingStyle: this.wearingStyle
+					}
+					
+					const res = await designAPI.saveDesign(designData)
+					this.currentDesignId = res.design.id
+					
+					// 跳转到收银台页面，携带设计信息
+					const payload = encodeURIComponent(JSON.stringify({
+						designId: this.currentDesignId,
+						name: trimmed,
+						totalPrice: this.totalPrice
+					}))
+					
+					uni.navigateTo({
+						url: `/pages/cashier/cashier?data=${payload}`
+					})
+				} catch (err) {
+					uni.showToast({
+						title: err.message || '处理失败，请稍后重试',
+						icon: 'none'
+					})
+				} finally {
+					this.processingOrder = false
 				}
 			}
 		}

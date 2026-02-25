@@ -178,6 +178,30 @@ export const productAPI = {
   }
 }
 
+// 购物车相关API
+export const cartAPI = {
+  // 获取当前用户购物车
+  getCart() {
+    return request('/api/cart')
+  },
+
+  // 向购物车添加一个手串设计
+  addItem(designPayload) {
+    return request('/api/cart', {
+      method: 'POST',
+      data: designPayload
+    })
+  },
+
+  // 批量删除或清空购物车；传 ids 则删除指定条目，不传则清空
+  deleteItems(ids) {
+    return request('/api/cart', {
+      method: 'DELETE',
+      data: ids && ids.length ? { ids } : {}
+    })
+  }
+}
+
 // 地址相关API
 export const addressAPI = {
   // 获取地址列表
@@ -214,5 +238,6 @@ export default {
   authAPI,
   designAPI,
   productAPI,
-  addressAPI
+  addressAPI,
+  cartAPI
 }

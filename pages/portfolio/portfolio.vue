@@ -1,16 +1,5 @@
 <template>
 	<view class="container">
-		<view class="header">
-			<view class="title-section">
-				<view class="title">我的作品集</view>
-				<view class="subtitle">管理你设计好的手串作品，继续编辑或删除</view>
-			</view>
-			<button class="new-btn" @click="goToWorkspace">
-				<text class="btn-icon">➕</text>
-				<text>新建作品</text>
-			</button>
-		</view>
-		
 		<view v-if="loading" class="loading">
 			<text>正在加载作品集...</text>
 		</view>
@@ -125,15 +114,16 @@
 				})
 			},
 			
-			// 绘制单个预览图
+			// 绘制单个预览图（确保所有珠子完整展示）
 			drawPreview(design) {
 				const canvasId = 'preview-' + design.id
 				const ctx = uni.createCanvasContext(canvasId, this)
 				
-				// 获取系统信息，计算实际像素值（320rpx对应的像素）
+				// 获取系统信息，计算实际像素值（预览区域 rpx 对应的像素）
 				const systemInfo = uni.getSystemInfoSync()
 				const screenWidth = systemInfo.screenWidth
-				const size = (320 / 750) * screenWidth // 320rpx 对应的像素值
+				// 将预览整体缩小为 260rpx，减小卡片高度
+				const size = (260 / 750) * screenWidth
 				const centerX = size / 2
 				const centerY = size / 2
 				
@@ -147,15 +137,33 @@
 					return
 				}
 				
-				// 计算珠子半径（增大尺寸，确保清晰）
-				const beadRadius = 10
+				// 基础珠子半径
+				const baseBeadRadius = 10
+				const margin = 4
+				// 允许的最大圆半径（保证珠子不会被裁剪）
+				const maxRadius = size / 2 - baseBeadRadius - margin
+				if (maxRadius <= 0) {
+					ctx.draw()
+					return
+				}
 				
-				// 计算合适的圆形半径，确保珠子不重叠
-				// 根据珠子数量和半径，计算最小半径（周长 = 珠子数量 * 珠子直径）
-				const minCircumference = items.length * beadRadius * 2
+				// 根据珠子数量计算最小需要的圆半径（周长 = 珠子数量 * 珠子直径）
+				const minCircumference = items.length * baseBeadRadius * 2
 				const minRadius = minCircumference / (2 * Math.PI)
-				// 添加一些间距，确保珠子不重叠
-				const radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25) // 至少占画布的25%
+				
+				let beadRadius = baseBeadRadius
+				let radius
+				
+				if (minRadius <= maxRadius) {
+					// 正常情况：优先保证不重叠，同时不超过最大半径
+					radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25)
+					radius = Math.min(radius, maxRadius)
+				} else {
+					// 珠子太多，按比例缩小珠子和圆半径，保证全部在画布内
+					const scale = maxRadius / minRadius
+					beadRadius = baseBeadRadius * scale
+					radius = maxRadius
+				}
 				
 				// 绘制圆形路径（虚线）
 				ctx.beginPath()
@@ -361,7 +369,7 @@
 	.preview-section {
 		position: relative;
 		width: 100%;
-		height: 340rpx; /* 略微降低卡片高度 */
+		height: 280rpx; /* 调低卡片高度，让整体更紧凑 */
 		background: #f9fafb;
 		display: flex;
 		align-items: center;
@@ -371,8 +379,8 @@
 	}
 	
 	.preview-canvas {
-		width: 320rpx;
-		height: 320rpx;
+		width: 260rpx;
+		height: 260rpx;
 		max-width: 100%;
 		max-height: 100%;
 	}
