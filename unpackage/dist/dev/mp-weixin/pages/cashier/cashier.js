@@ -83,12 +83,12 @@ const _sfc_main = {
       const ctx = common_vendor.index.createCanvasContext("cashier-preview", this);
       const systemInfo = common_vendor.index.getSystemInfoSync();
       const screenWidth = systemInfo.screenWidth;
-      const size = 320 / 750 * screenWidth;
+      const size = 280 / 750 * screenWidth;
       const centerX = size / 2;
       const centerY = size / 2;
       ctx.clearRect(0, 0, size, size);
       const baseBeadRadius = 10;
-      const margin = 4;
+      const margin = 8;
       const maxRadius = size / 2 - baseBeadRadius - margin;
       if (maxRadius <= 0) {
         ctx.draw();
@@ -177,7 +177,7 @@ const _sfc_main = {
           });
         }, 300);
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/cashier/cashier.vue:287", "加入购物车失败：", err);
+        common_vendor.index.__f__("error", "at pages/cashier/cashier.vue:289", "加入购物车失败：", err);
         common_vendor.index.showToast({
           title: err.message || "加入购物车失败",
           icon: "none"

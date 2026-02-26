@@ -169,9 +169,10 @@ export default {
 			const ctx = uni.createCanvasContext('cashier-preview', this)
 			
 			// 计算画布尺寸（参考作品集：320rpx）
-			const systemInfo = uni.getSystemInfoSync()
-			const screenWidth = systemInfo.screenWidth
-			const size = (320 / 750) * screenWidth
+				const systemInfo = uni.getSystemInfoSync()
+				const screenWidth = systemInfo.screenWidth
+				// 预览区域稍微缩小一点，配合更大的安全边距，保证不被裁剪
+				const size = (280 / 750) * screenWidth
 			const centerX = size / 2
 			const centerY = size / 2
 			
@@ -180,7 +181,8 @@ export default {
 			
 			// 基础珠子半径
 			const baseBeadRadius = 10
-			const margin = 4
+			// 增大安全边距，确保珠子完全落在画布内
+			const margin = 8
 			const maxRadius = size / 2 - baseBeadRadius - margin
 			if (maxRadius <= 0) {
 				ctx.draw()
@@ -342,6 +344,13 @@ export default {
 	font-size: 24rpx;
 	color: #6b7280;
 	margin-top: 8rpx;
+}
+
+.preview-section {
+	margin-top: 24rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .empty-preview {

@@ -353,7 +353,8 @@
 	
 	.design-card {
 		background: rgba(255, 255, 255, 0.9);
-		border-radius: 24rpx;
+		/* 微小圆角，让卡片更轻盈克制 */
+		border-radius: 14rpx;
 		overflow: hidden;
 		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
 		display: flex;

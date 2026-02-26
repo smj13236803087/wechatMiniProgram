@@ -1596,7 +1596,7 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 	
 	.preview-panel-fixed {
 		background: rgba(255, 255, 255, 0.95);
-		border-radius: 32rpx;
+		border-radius: 0;
 		padding: 20rpx 24rpx 24rpx 24rpx;
 		box-shadow: 0 12rpx 40rpx rgba(31, 41, 55, 0.18);
 		display: flex;
@@ -1921,7 +1921,7 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 		display: flex;
 		flex-direction: column;
 		background: rgba(255, 255, 255, 0.95);
-		border-radius: 24rpx;
+		border-radius: 0;
 		overflow: hidden;
 	}
 	

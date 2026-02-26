@@ -38,6 +38,12 @@
 	color: #6b7280;
 	margin-top: 8rpx;
 }
+.preview-section.data-v-bb25b75b {
+	margin-top: 24rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 .empty-preview.data-v-bb25b75b {
 	margin-top: 40rpx;
 	padding: 40rpx 0;
