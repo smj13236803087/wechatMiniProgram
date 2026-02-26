@@ -244,11 +244,11 @@
 							/>
 						</view>
 						<view class="save-btn-group">
-							<button 
+						<button 
 								class="save-btn-compact secondary" 
 								:disabled="items.length === 0 || saving || processingOrder"
-								@click="saveDesign"
-							>
+							@click="saveDesign"
+						>
 								{{ saving ? '保存中...' : '仅保存' }}
 							</button>
 							<button 
@@ -257,7 +257,7 @@
 								@click="completeAndGoToCashier"
 							>
 								{{ processingOrder ? '处理中...' : '完成' }}
-							</button>
+						</button>
 						</view>
 					</view>
 				</view>

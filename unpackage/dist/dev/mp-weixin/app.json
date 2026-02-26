@@ -8,7 +8,8 @@
     "pages/portfolio/portfolio",
     "pages/address/address",
     "pages/orders/orders",
-    "pages/cashier/cashier"
+    "pages/cashier/cashier",
+    "pages/checkout/checkout"
   ],
   "window": {
     "navigationBarTextStyle": "black",

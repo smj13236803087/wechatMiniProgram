@@ -11,6 +11,7 @@ if (!Math) {
   "./pages/address/address.js";
   "./pages/orders/orders.js";
   "./pages/cashier/cashier.js";
+  "./pages/checkout/checkout.js";
 }
 const _sfc_main = {
   onLaunch: function() {

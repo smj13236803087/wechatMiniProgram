@@ -53,6 +53,12 @@
 			"style": {
 				"navigationBarTitleText": "收银台"
 			}
+		},
+		{
+			"path": "pages/checkout/checkout",
+			"style": {
+				"navigationBarTitleText": "提交订单"
+			}
 		}
 	],
 	"globalStyle": {

@@ -232,7 +232,7 @@ const _sfc_main = {
         }
       });
     },
-    // 去结算（占位，暂不实现具体逻辑）
+    // 去结算
     goToCheckout() {
       if (this.selectedIds.length === 0) {
         common_vendor.index.showToast({
@@ -241,9 +241,22 @@ const _sfc_main = {
         });
         return;
       }
-      common_vendor.index.showToast({
-        title: "结算流程待实现",
-        icon: "none"
+      const selectedItems = this.items.filter((i) => i.checked).map((item) => {
+        var _a;
+        return {
+          id: item.id,
+          name: item.name || ((_a = item.design) == null ? void 0 : _a.name) || "未命名作品",
+          design: item.design,
+          totalPrice: item.totalPrice,
+          quantity: item.quantity || 1
+        };
+      });
+      const payload = encodeURIComponent(JSON.stringify({
+        items: selectedItems,
+        totalPrice: this.selectedTotalPrice
+      }));
+      common_vendor.index.navigateTo({
+        url: `/pages/checkout/checkout?data=${payload}`
       });
     },
     goToWorkspace() {

@@ -334,7 +334,7 @@
 				})
 			},
 			
-			// 去结算（占位，暂不实现具体逻辑）
+			// 去结算
 			goToCheckout() {
 				if (this.selectedIds.length === 0) {
 					uni.showToast({
@@ -343,10 +343,21 @@
 					})
 					return
 				}
-				// 先预留：当前只是给出提示，后续再接入真正的结算流程
-				uni.showToast({
-					title: '结算流程待实现',
-					icon: 'none'
+				// 获取选中的商品数据
+				const selectedItems = this.items.filter(i => i.checked).map(item => ({
+					id: item.id,
+					name: item.name || item.design?.name || '未命名作品',
+					design: item.design,
+					totalPrice: item.totalPrice,
+					quantity: item.quantity || 1
+				}))
+				// 跳转到提交订单页面，传递选中的商品数据
+				const payload = encodeURIComponent(JSON.stringify({
+					items: selectedItems,
+					totalPrice: this.selectedTotalPrice
+				}))
+				uni.navigateTo({
+					url: `/pages/checkout/checkout?data=${payload}`
 				})
 			},
 			
