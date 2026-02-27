@@ -30,12 +30,14 @@
 			<view class="hero-section">
 				<view class="hero-content">
 					<view class="hero-title-group">
-						<text class="hero-icon">⚡</text>
+						<view class="hero-icon" aria-hidden="true">
+							<image class="hero-icon-img" src="/assets/sparkles.svg" mode="aspectFit" />
+						</view>
 						<text class="hero-title">开启AI专属能量深度测算</text>
 					</view>
 					<text class="hero-desc">只需3个问题,洞悉你当前的潜意识与能量匮乏点</text>
 					<button class="hero-btn">免费生成我的能量雷达报告</button>
-					<text class="hero-stats">已有18,742 人完成测算</text>
+					<text class="hero-stats">已有<text class="hero-stats-number">18,742</text>人完成测算</text>
 				</view>
 			</view>
 			
@@ -227,7 +229,7 @@
 		width: 64rpx;
 		height: 64rpx;
 		border-radius: 50%;
-		background: linear-gradient(135deg, #a78bfa, #60a5fa);
+		background: linear-gradient(135deg, #a855f7 0%, #d946ef 30%, #3b82f6 65%, #06b6d4 100%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -353,18 +355,38 @@
 	.hero-title-group {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 8rpx;
 	}
 	
 	.hero-icon {
-		font-size: 36rpx;
-		color: #8b5cf6;
+		width: 44rpx;
+		height: 44rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transform-origin: center center;
+		animation: heroIconWiggle 2s linear infinite;
 	}
-	
+
+	@keyframes heroIconWiggle {
+		0% { transform: rotate(0deg); }
+		25% { transform: rotate(10deg); }
+		50% { transform: rotate(-10deg); }
+		100% { transform: rotate(0deg); }
+	}
+
+	.hero-icon-img {
+		width: 44rpx;
+		height: 44rpx;
+	}
 	.hero-title {
 		font-size: 44rpx;
 		font-weight: 700;
-		color: #8b5cf6;
+		background: linear-gradient(90deg, #9333ea, #2563eb, #9333ea);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
 	}
 	
 	.hero-desc {
@@ -379,7 +401,7 @@
 		max-width: 600rpx;
 		height: 96rpx;
 		border-radius: 999rpx;
-		background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+		background: linear-gradient(135deg, #a855f7 0%, #d946ef 28%, #3b82f6 62%, #06b6d4 100%);
 		color: #ffffff;
 		font-size: 32rpx;
 		font-weight: 600;
@@ -399,6 +421,12 @@
 		margin-top: 8rpx;
 	}
 	
+	.hero-stats-number {
+		font-size: 24rpx;
+		color: #8b5cf6;
+		font-weight: 700;
+	}
+	
 	/* 四个功能导航 */
 	.quick-nav {
 		display: flex;
@@ -413,6 +441,12 @@
 		align-items: center;
 		gap: 12rpx;
 		flex: 1;
+		padding: 24rpx 16rpx 20rpx;
+		border: 2rpx solid #e5e7eb;
+		border-top: none;
+		border-radius: 0 0 24rpx 24rpx;
+		background: rgba(255, 255, 255, 0.96);
+		box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.08);
 	}
 	
 	.nav-icon {
@@ -423,7 +457,6 @@
 		align-items: center;
 		justify-content: center;
 		font-size: 48rpx;
-		border: 3rpx solid;
 	}
 	
 	.nav-icon.yellow {

@@ -71,11 +71,12 @@ const _sfc_main = {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: common_assets._imports_0,
-    b: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
-    c: $data.activeTab === "ai" ? 1 : "",
-    d: common_vendor.o(($event) => $data.activeTab = "ai"),
-    e: $data.activeTab === "classic" ? 1 : "",
-    f: common_vendor.o(($event) => $data.activeTab = "classic")
+    b: common_assets._imports_1,
+    c: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
+    d: $data.activeTab === "ai" ? 1 : "",
+    e: common_vendor.o(($event) => $data.activeTab = "ai"),
+    f: $data.activeTab === "classic" ? 1 : "",
+    g: common_vendor.o(($event) => $data.activeTab = "classic")
   };
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-1cf27b2a"]]);

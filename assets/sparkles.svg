@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+  <!-- lucide-like Sparkles, fixed purple-500 (#a855f7) so <image> shows correct color in mini program -->
+  <g stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2l1.2 4.1L17.3 7.3l-4.1 1.2L12 12.6l-1.2-4.1L6.7 7.3l4.1-1.2L12 2z"/>
+    <path d="M19 11l.7 2.3L22 14l-2.3.7L19 17l-.7-2.3L16 14l2.3-.7L19 11z"/>
+    <path d="M5 13l.7 2.3L8 16l-2.3.7L5 19l-.7-2.3L2 16l2.3-.7L5 13z"/>
+  </g>
+</svg>
