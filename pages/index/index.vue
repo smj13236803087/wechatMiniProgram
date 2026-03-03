@@ -44,19 +44,27 @@
 			<!-- 四个功能导航按钮 -->
 			<view class="quick-nav">
 				<view class="nav-item">
-					<view class="nav-icon yellow">⭐</view>
+					<view class="nav-icon yellow">
+						<image class="nav-icon-img" src="/assets/icons/star.svg" mode="aspectFit" />
+					</view>
 					<text class="nav-text">经典六维</text>
 				</view>
 				<view class="nav-item">
-					<view class="nav-icon purple">💎</view>
+					<view class="nav-icon purple">
+						<image class="nav-icon-img" src="/assets/icons/gem.svg" mode="aspectFit" />
+					</view>
 					<text class="nav-text">星座守护</text>
 				</view>
 				<view class="nav-item">
-					<view class="nav-icon blue">📅</view>
+					<view class="nav-icon blue">
+						<image class="nav-icon-img" src="/assets/icons/calendar.svg" mode="aspectFit" />
+					</view>
 					<text class="nav-text">生肖流年</text>
 				</view>
 				<view class="nav-item">
-					<view class="nav-icon green">📖</view>
+					<view class="nav-icon green">
+						<image class="nav-icon-img" src="/assets/icons/book-open.svg" mode="aspectFit" />
+					</view>
 					<text class="nav-text">能量图鉴</text>
 				</view>
 			</view>
@@ -86,9 +94,28 @@
 					
 					<button class="diy-btn" @click="goToWorkspace">进入2D可视化工作台</button>
 					<view class="diy-hint">
-						<text class="hint-icon">➕</text>
 						<text class="hint-text">支持18种入矿石自由组合</text>
 					</view>
+				</view>
+			</view>
+			
+			<!-- 底部 Tab 导航放到中间区域 -->
+			<view class="bottom-tabs">
+				<view 
+					class="bottom-tab-item"
+					:class="{ active: activeTab === 'ai' }"
+					@click="activeTab = 'ai'"
+				>
+					<image class="bottom-tab-icon" src="/assets/icons/tab-ai.svg" mode="aspectFit" />
+					<text class="bottom-tab-text">AI测算精选案例</text>
+				</view>
+				<view 
+					class="bottom-tab-item"
+					:class="{ active: activeTab === 'classic' }"
+					@click="activeTab = 'classic'"
+				>
+					<image class="bottom-tab-icon" src="/assets/icons/tab-classic.svg" mode="aspectFit" />
+					<text class="bottom-tab-text">经典主题现货</text>
 				</view>
 			</view>
 			
@@ -97,26 +124,6 @@
 				<text class="placeholder-text">内容区域</text>
 			</view>
 		</scroll-view>
-		
-		<!-- 底部Tab导航 -->
-		<view class="bottom-tabs">
-			<view 
-				class="bottom-tab-item"
-				:class="{ active: activeTab === 'ai' }"
-				@click="activeTab = 'ai'"
-			>
-				<text class="bottom-tab-icon">@</text>
-				<text class="bottom-tab-text">AI测算精选案例</text>
-			</view>
-			<view 
-				class="bottom-tab-item"
-				:class="{ active: activeTab === 'classic' }"
-				@click="activeTab = 'classic'"
-			>
-				<text class="bottom-tab-icon">☑️</text>
-				<text class="bottom-tab-text">经典主题现货</text>
-			</view>
-		</view>
 	</view>
 </template>
 
@@ -124,15 +131,31 @@
 	export default {
 		data() {
 			return {
-				activeTab: 'ai'
+				activeTab: 'ai',
+				dashOffset: 0,
+				dashTimer: null,
+				screenWidth: 0
 			}
 		},
 		onLoad() {
-			this.$nextTick(() => {
-				setTimeout(() => {
-					this.drawPreview()
-				}, 300)
+			// 优先使用异步 API 获取系统信息，避免反复触发 getSystemInfoSync 的废弃警告
+			uni.getSystemInfo({
+				success: (res) => {
+					this.screenWidth = res.screenWidth
+					this.$nextTick(() => {
+						this.startPreviewAnimation()
+					})
+				},
+				fail: () => {
+					// 兜底：获取失败时也尽量启动动画，但不再频繁调用同步 API
+					this.$nextTick(() => {
+						this.startPreviewAnimation()
+					})
+				}
 			})
+		},
+		onUnload() {
+			this.stopPreviewAnimation()
 		},
 		methods: {
 			goToWorkspace() {
@@ -141,12 +164,36 @@
 				})
 			},
 			
+			// 启动虚线圆动画
+			startPreviewAnimation() {
+				this.stopPreviewAnimation()
+				// 先画一帧
+				this.drawPreview()
+				// 通过改变虚线偏移量制造旋转效果
+				this.dashTimer = setInterval(() => {
+					this.dashOffset = (this.dashOffset + 2) % 16
+					this.drawPreview()
+				}, 60)
+			},
+			
+			// 停止虚线圆动画
+			stopPreviewAnimation() {
+				if (this.dashTimer) {
+					clearInterval(this.dashTimer)
+					this.dashTimer = null
+				}
+			},
+			
 			// 绘制预览图（虚线圆形 + 两个加号）
 			drawPreview() {
 				const ctx = uni.createCanvasContext('diy-preview', this)
 				
-				const systemInfo = uni.getSystemInfoSync()
-				const screenWidth = systemInfo.screenWidth
+				// 使用缓存的屏幕宽度，避免在动画中频繁调用系统 API
+				const screenWidth = this.screenWidth
+				if (!screenWidth) {
+					// 若尚未拿到屏幕宽度，则暂时不绘制，等待下次调用
+					return
+				}
 				const size = (500 / 750) * screenWidth // 500rpx
 				const centerX = size / 2
 				const centerY = size / 2
@@ -159,7 +206,7 @@
 				ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
 				ctx.setStrokeStyle('rgba(168, 85, 247, 0.3)')
 				ctx.setLineWidth(3)
-				ctx.setLineDash([8, 8], 0)
+				ctx.setLineDash([8, 8], this.dashOffset || 0)
 				ctx.stroke()
 				ctx.setLineDash([], 0)
 				
@@ -335,7 +382,7 @@
 	/* 内容区域 */
 	.content {
 		flex: 1;
-		padding-bottom: 120rpx;
+		padding-bottom: 40rpx;
 	}
 	
 	/* AI能量测算区域 */
@@ -442,41 +489,45 @@
 		gap: 12rpx;
 		flex: 1;
 		padding: 24rpx 16rpx 20rpx;
-		border: 2rpx solid #e5e7eb;
+		/* 边框稍微加深，让轮廓更明显一些 */
+		border: 2rpx solid #d4d4d8;
 		border-top: none;
 		border-radius: 0 0 24rpx 24rpx;
 		background: rgba(255, 255, 255, 0.96);
-		box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.08);
+		/* 轻微下方阴影，只要一点点层次感 */
+		box-shadow: 0 6rpx 12rpx rgba(15, 23, 42, 0.05);
 	}
 	
 	.nav-icon {
-		width: 100rpx;
-		height: 100rpx;
-		border-radius: 20rpx;
+		width: 104rpx;
+		height: 104rpx;
+		border-radius: 32rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 48rpx;
+		color: #ffffff;
+		box-shadow: 0 12rpx 24rpx rgba(15, 23, 42, 0.18);
+	}
+	
+	.nav-icon-img {
+		width: 52rpx;
+		height: 52rpx;
 	}
 	
 	.nav-icon.yellow {
-		background: #fef3c7;
-		border-color: #fbbf24;
+		background: linear-gradient(135deg, #fde047, #f97316);
 	}
 	
 	.nav-icon.purple {
-		background: #f3e8ff;
-		border-color: #8b5cf6;
+		background: linear-gradient(135deg, #a855f7, #ec4899);
 	}
 	
 	.nav-icon.blue {
-		background: #dbeafe;
-		border-color: #3b82f6;
+		background: linear-gradient(135deg, #3b82f6, #06b6d4);
 	}
 	
 	.nav-icon.green {
-		background: #d1fae5;
-		border-color: #10b981;
+		background: linear-gradient(135deg, #22c55e, #10b981);
 	}
 	
 	.nav-text {
@@ -512,6 +563,9 @@
 		display: flex;
 		align-items: center;
 		gap: 8rpx;
+		/* 标题整体水平居中 */
+		justify-content: center;
+		width: 100%;
 	}
 	
 	.diy-icon {
@@ -522,13 +576,15 @@
 	.diy-title {
 		font-size: 36rpx;
 		font-weight: 700;
-		color: #8b5cf6;
+		color: black;
 	}
 	
 	.diy-subtitle {
 		font-size: 26rpx;
 		color: #6b7280;
 		margin-top: -8rpx;
+		text-align: center;
+		width: 100%;
 	}
 	
 	.diy-preview-area {
@@ -543,7 +599,8 @@
 		position: relative;
 		width: 500rpx;
 		height: 500rpx;
-		background: #e5e7eb;
+		/* 去掉灰色背景方块，只保留画布内容 */
+		background: transparent;
 		border-radius: 24rpx;
 		display: flex;
 		align-items: center;
@@ -581,7 +638,8 @@
 		width: 100%;
 		height: 96rpx;
 		border-radius: 999rpx;
-		background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+		/* 两个颜色的渐变：左侧紫色 -> 右侧蓝绿色 */
+		background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
 		color: #ffffff;
 		font-size: 32rpx;
 		font-weight: 600;
@@ -622,41 +680,38 @@
 	
 	/* 底部Tab导航 */
 	.bottom-tabs {
-		position: fixed;
-		left: 0;
-		right: 0;
-		bottom: 0;
+		margin: 24rpx auto 0;
+		width: 86%;
 		display: flex;
 		background: #ffffff;
-		border-top: 1rpx solid #f3f4f6;
-		padding: 16rpx 0;
-		box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+		border-radius: 999rpx;
+		padding: 8rpx 12rpx;
+		box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.08);
 	}
 	
 	.bottom-tab-item {
 		flex: 1;
 		display: flex;
-		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		gap: 8rpx;
-		padding: 12rpx 0;
+		padding: 18rpx 0;
+		border-radius: 999rpx;
 	}
 	
 	.bottom-tab-item.active {
 		color: #8b5cf6;
+		background: #ffffff;
+		box-shadow: 0 6rpx 16rpx rgba(129, 140, 248, 0.25);
 	}
 	
 	.bottom-tab-icon {
-		font-size: 40rpx;
-	}
-	
-	.bottom-tab-item.active .bottom-tab-icon {
-		color: #8b5cf6;
+		width: 36rpx;
+		height: 36rpx;
 	}
 	
 	.bottom-tab-item:not(.active) .bottom-tab-icon {
-		color: #9ca3af;
+		opacity: 0.4;
 	}
 	
 	.bottom-tab-text {

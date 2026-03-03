@@ -39,6 +39,14 @@ const _sfc_main = {
         canvasRect: null
         // 缓存 canvas 位置
       },
+      // 珠子位置变换动画状态
+      reorderAnimation: {
+        running: false,
+        startAngles: [],
+        endAngles: [],
+        currentAngles: null,
+        timer: null
+      },
       // 珠子选择状态
       beadStep: "category",
       selectedBeadCategory: null,
@@ -289,7 +297,7 @@ const _sfc_main = {
         this.categorizedProducts = utils_bracelet.categorizeProducts(products);
       } catch (err) {
         this.error = err.message || "拉取商品失败";
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:736", "拉取商品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:744", "拉取商品失败：", err);
         this.categorizedProducts = null;
       } finally {
         this.loading = false;
@@ -309,7 +317,7 @@ const _sfc_main = {
           this.currentDesignId = design.id;
         }
       } catch (err) {
-        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:757", "加载作品失败：", err);
+        common_vendor.index.__f__("error", "at pages/workspace/workspace.vue:765", "加载作品失败：", err);
         common_vendor.index.showToast({
           title: "加载作品失败",
           icon: "none"
@@ -463,8 +471,18 @@ const _sfc_main = {
       const diameterMm = diameter || this.defaultDiameter;
       return diameterMm / 2 * this.mmToPx * this.beadScale;
     },
-    // 获取珠子的角度位置
+    // 获取珠子的角度位置（支持位置变换动画）
     getItemAngle(index) {
+      if (this.reorderAnimation && this.reorderAnimation.running && this.reorderAnimation.currentAngles) {
+        const angles = this.reorderAnimation.currentAngles;
+        if (angles && angles.length === this.items.length) {
+          return angles[index] || 0;
+        }
+      }
+      return this._computeAngleForIndex(index);
+    },
+    // 内部使用：按照当前 angleSteps 计算角度（不受动画影响）
+    _computeAngleForIndex(index) {
       if (index === 0)
         return 0;
       let cumulativeAngle = 0;
@@ -509,25 +527,23 @@ const _sfc_main = {
       ctx.setLineDash([5, 5], 0);
       ctx.stroke();
       ctx.setLineDash([], 0);
-      const nearestBeadIndex = this.dragState.nearestBeadIndex;
+      const isDragging = this.dragState.isDragging;
+      const dragIndex = this.dragState.dragItemIndex;
+      const dragX = this.dragState.currentX;
+      const dragY = this.dragState.currentY;
       for (let i = 0; i < this.items.length; i++) {
-        if (this.dragState.isDragging && i === this.dragState.dragItemIndex) {
-          continue;
-        }
         const item = this.items[i];
-        const x = this.getItemX(i);
-        const y = this.getItemY(i);
+        let x = this.getItemX(i);
+        let y = this.getItemY(i);
+        if (isDragging && i === dragIndex) {
+          const size2 = this.previewSize;
+          const clampedX = Math.max(0, Math.min(size2, dragX));
+          const clampedY = Math.max(0, Math.min(size2, dragY));
+          x = clampedX;
+          y = clampedY;
+        }
         const radius = this.getBeadRadius(item.diameter);
         const color = item.color || "#8b4513";
-        if (i === nearestBeadIndex) {
-          ctx.beginPath();
-          ctx.arc(x, y, radius + 4, 0, 2 * Math.PI);
-          ctx.setStrokeStyle("#3b82f6");
-          ctx.setLineWidth(3);
-          ctx.setLineDash([5, 5], 0);
-          ctx.stroke();
-          ctx.setLineDash([], 0);
-        }
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
         ctx.setFillStyle(color);
@@ -634,8 +650,26 @@ const _sfc_main = {
         this.endDrag();
         return;
       }
-      if (this.dragState.nearestBeadIndex !== -1 && this.dragState.nearestBeadIndex !== this.dragState.dragItemIndex) {
-        this.swapItems(this.dragState.dragItemIndex, this.dragState.nearestBeadIndex);
+      const fromIndex = this.dragState.dragItemIndex;
+      const targetIndex = this.dragState.nearestBeadIndex;
+      if (targetIndex !== -1 && targetIndex !== fromIndex) {
+        const oldAngles = [];
+        for (let i = 0; i < this.items.length; i++) {
+          oldAngles.push(this._computeAngleForIndex(i));
+        }
+        const dragAngle = Math.atan2(
+          this.dragState.currentY - this.centerY,
+          this.dragState.currentX - this.centerX
+        );
+        const targetAngle = this._computeAngleForIndex(targetIndex);
+        let diff = dragAngle - targetAngle;
+        while (diff > Math.PI)
+          diff -= 2 * Math.PI;
+        while (diff < -Math.PI)
+          diff += 2 * Math.PI;
+        const insertAfter = diff > 0;
+        const rawToIndex = insertAfter ? targetIndex + 1 : targetIndex;
+        this.moveItemWithAnimation(fromIndex, rawToIndex, oldAngles);
       }
       this.endDrag();
     },
@@ -736,6 +770,69 @@ const _sfc_main = {
       this.$nextTick(() => {
         this.drawBracelet();
       });
+    },
+    // 带动画的移动位置：fromIndex 移动到 rawToIndex（基于原始索引）
+    moveItemWithAnimation(fromIndex, rawToIndex, oldAngles) {
+      if (fromIndex < 0 || fromIndex >= this.items.length)
+        return;
+      if (rawToIndex < 0 || rawToIndex > this.items.length)
+        return;
+      if (fromIndex === rawToIndex || fromIndex === rawToIndex - 1)
+        return;
+      let toIndex = rawToIndex;
+      if (rawToIndex > fromIndex) {
+        toIndex = rawToIndex - 1;
+      }
+      const newItems = this.items.slice();
+      const [moved] = newItems.splice(fromIndex, 1);
+      newItems.splice(toIndex, 0, moved);
+      this.items = newItems;
+      const newAngles = [];
+      for (let i = 0; i < this.items.length; i++) {
+        newAngles.push(this._computeAngleForIndex(i));
+      }
+      this.startReorderAnimation(oldAngles, newAngles);
+    },
+    // 启动珠子位置变换动画
+    startReorderAnimation(oldAngles, newAngles) {
+      if (!oldAngles || !newAngles || oldAngles.length !== newAngles.length) {
+        this.reorderAnimation.running = false;
+        this.reorderAnimation.currentAngles = null;
+        this.drawBracelet();
+        return;
+      }
+      if (this.reorderAnimation.timer) {
+        clearTimeout(this.reorderAnimation.timer);
+        this.reorderAnimation.timer = null;
+      }
+      const duration = 220;
+      const startTime = Date.now();
+      this.reorderAnimation.running = true;
+      this.reorderAnimation.startAngles = oldAngles.slice();
+      this.reorderAnimation.endAngles = newAngles.slice();
+      this.reorderAnimation.currentAngles = oldAngles.slice();
+      const step = () => {
+        const now = Date.now();
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = t * t * (3 - 2 * t);
+        const current = [];
+        for (let i = 0; i < oldAngles.length; i++) {
+          const start = oldAngles[i];
+          const end = newAngles[i];
+          current[i] = start + (end - start) * eased;
+        }
+        this.reorderAnimation.currentAngles = current;
+        this.drawBracelet();
+        if (t < 1 && this.reorderAnimation.running) {
+          this.reorderAnimation.timer = setTimeout(step, 16);
+        } else {
+          this.reorderAnimation.running = false;
+          this.reorderAnimation.currentAngles = null;
+          this.reorderAnimation.timer = null;
+          this.drawBracelet();
+        }
+      };
+      step();
     },
     completeWristSize() {
       const size = parseFloat(this.wristSizeInput);

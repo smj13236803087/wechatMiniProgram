@@ -467,6 +467,14 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 					drawTimer: null, // 绘制节流定时器
 					canvasRect: null // 缓存 canvas 位置
 				},
+				// 珠子位置变换动画状态
+				reorderAnimation: {
+					running: false,
+					startAngles: [],
+					endAngles: [],
+					currentAngles: null,
+					timer: null
+				},
 				// 珠子选择状态
 				beadStep: 'category',
 				selectedBeadCategory: null,
@@ -940,8 +948,20 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 				return (diameterMm / 2) * this.mmToPx * this.beadScale
 			},
 			
-			// 获取珠子的角度位置
+			// 获取珠子的角度位置（支持位置变换动画）
 			getItemAngle(index) {
+				// 动画进行中时，优先使用动画中的角度数组
+				if (this.reorderAnimation && this.reorderAnimation.running && this.reorderAnimation.currentAngles) {
+					const angles = this.reorderAnimation.currentAngles
+					if (angles && angles.length === this.items.length) {
+						return angles[index] || 0
+					}
+				}
+				return this._computeAngleForIndex(index)
+			},
+			
+			// 内部使用：按照当前 angleSteps 计算角度（不受动画影响）
+			_computeAngleForIndex(index) {
 				if (index === 0) return 0
 				
 				let cumulativeAngle = 0
@@ -1000,32 +1020,29 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 				ctx.stroke()
 				ctx.setLineDash([], 0)
 				
-				// 使用拖拽状态中保存的最近珠子索引
-				const nearestBeadIndex = this.dragState.nearestBeadIndex
+				const isDragging = this.dragState.isDragging
+				const dragIndex = this.dragState.dragItemIndex
+				const dragX = this.dragState.currentX
+				const dragY = this.dragState.currentY
 				
-				// 绘制所有珠子（被选中的珠子不绘制，让它消失）
+				// 绘制所有珠子（拖拽中的珠子也始终可见）
 				for (let i = 0; i < this.items.length; i++) {
-					// 被选中的珠子不显示
-					if (this.dragState.isDragging && i === this.dragState.dragItemIndex) {
-						continue
+					const item = this.items[i]
+					
+					// 计算位置：普通珠子用轨迹位置，拖拽中的珠子完全跟随手指在画布内自由移动
+					let x = this.getItemX(i)
+					let y = this.getItemY(i)
+					if (isDragging && i === dragIndex) {
+						// 使用当前拖拽坐标，但限制在画布区域内，避免超出可见范围
+						const size = this.previewSize
+						const clampedX = Math.max(0, Math.min(size, dragX))
+						const clampedY = Math.max(0, Math.min(size, dragY))
+						x = clampedX
+						y = clampedY
 					}
 					
-					const item = this.items[i]
-					const x = this.getItemX(i)
-					const y = this.getItemY(i)
 					const radius = this.getBeadRadius(item.diameter)
 					const color = item.color || '#8b4513'
-					
-					// 如果是最近的珠子，先绘制虚线边框
-					if (i === nearestBeadIndex) {
-						ctx.beginPath()
-						ctx.arc(x, y, radius + 4, 0, 2 * Math.PI)
-						ctx.setStrokeStyle('#3b82f6')
-						ctx.setLineWidth(3)
-						ctx.setLineDash([5, 5], 0)
-						ctx.stroke()
-						ctx.setLineDash([], 0)
-					}
 					
 					// 绘制珠子
 					ctx.beginPath()
@@ -1182,10 +1199,33 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 					return
 				}
 				
-				// 如果有最近的珠子（显示虚线），直接换位置
-				if (this.dragState.nearestBeadIndex !== -1 && 
-					this.dragState.nearestBeadIndex !== this.dragState.dragItemIndex) {
-					this.swapItems(this.dragState.dragItemIndex, this.dragState.nearestBeadIndex)
+				// 如果有最近的珠子，根据拖拽方向决定插入到该珠子的哪一侧
+				const fromIndex = this.dragState.dragItemIndex
+				const targetIndex = this.dragState.nearestBeadIndex
+				if (targetIndex !== -1 && targetIndex !== fromIndex) {
+					// 记录变换前的角度，用于后续动画
+					const oldAngles = []
+					for (let i = 0; i < this.items.length; i++) {
+						oldAngles.push(this._computeAngleForIndex(i))
+					}
+					
+					// 当前拖拽点和目标珠子的角度
+					const dragAngle = Math.atan2(
+						this.dragState.currentY - this.centerY,
+						this.dragState.currentX - this.centerX
+					)
+					const targetAngle = this._computeAngleForIndex(targetIndex)
+					
+					// 归一化角度差到 [-PI, PI]
+					let diff = dragAngle - targetAngle
+					while (diff > Math.PI) diff -= 2 * Math.PI
+					while (diff < -Math.PI) diff += 2 * Math.PI
+					
+					// diff > 0 认为落在目标珠子“后侧”，插入到它后面，否则插入到前面
+					const insertAfter = diff > 0
+					const rawToIndex = insertAfter ? targetIndex + 1 : targetIndex
+					
+					this.moveItemWithAnimation(fromIndex, rawToIndex, oldAngles)
 				}
 				
 				this.endDrag()
@@ -1328,6 +1368,86 @@ import { productAPI, designAPI, cartAPI } from '@/utils/api.js'
 				this.$nextTick(() => {
 					this.drawBracelet()
 				})
+			},
+			
+			// 带动画的移动位置：fromIndex 移动到 rawToIndex（基于原始索引）
+			moveItemWithAnimation(fromIndex, rawToIndex, oldAngles) {
+				if (fromIndex < 0 || fromIndex >= this.items.length) return
+				if (rawToIndex < 0 || rawToIndex > this.items.length) return
+				if (fromIndex === rawToIndex || fromIndex === rawToIndex - 1) return
+				
+				// 根据原始索引调整插入位置（先删除再插入）
+				let toIndex = rawToIndex
+				if (rawToIndex > fromIndex) {
+					toIndex = rawToIndex - 1
+				}
+				
+				const newItems = this.items.slice()
+				const [moved] = newItems.splice(fromIndex, 1)
+				newItems.splice(toIndex, 0, moved)
+				this.items = newItems
+				
+				// 计算新的角度
+				const newAngles = []
+				for (let i = 0; i < this.items.length; i++) {
+					newAngles.push(this._computeAngleForIndex(i))
+				}
+				
+				// 启动位置变换动画
+				this.startReorderAnimation(oldAngles, newAngles)
+			},
+			
+			// 启动珠子位置变换动画
+			startReorderAnimation(oldAngles, newAngles) {
+				if (!oldAngles || !newAngles || oldAngles.length !== newAngles.length) {
+					this.reorderAnimation.running = false
+					this.reorderAnimation.currentAngles = null
+					this.drawBracelet()
+					return
+				}
+				
+				// 若已有动画在跑，先清理
+				if (this.reorderAnimation.timer) {
+					clearTimeout(this.reorderAnimation.timer)
+					this.reorderAnimation.timer = null
+				}
+				
+				const duration = 220 // ms
+				const startTime = Date.now()
+				
+				this.reorderAnimation.running = true
+				this.reorderAnimation.startAngles = oldAngles.slice()
+				this.reorderAnimation.endAngles = newAngles.slice()
+				this.reorderAnimation.currentAngles = oldAngles.slice()
+				
+				const step = () => {
+					const now = Date.now()
+					const t = Math.min((now - startTime) / duration, 1)
+					// 使用 ease-in-out 插值，让动画更丝滑
+					const eased = t * t * (3 - 2 * t)
+					
+					const current = []
+					for (let i = 0; i < oldAngles.length; i++) {
+						const start = oldAngles[i]
+						const end = newAngles[i]
+						current[i] = start + (end - start) * eased
+					}
+					this.reorderAnimation.currentAngles = current
+					
+					this.drawBracelet()
+					
+					if (t < 1 && this.reorderAnimation.running) {
+						this.reorderAnimation.timer = setTimeout(step, 16)
+					} else {
+						this.reorderAnimation.running = false
+						this.reorderAnimation.currentAngles = null
+						this.reorderAnimation.timer = null
+						// 最后再用最终布局刷新一次，确保精确对齐
+						this.drawBracelet()
+					}
+				}
+				
+				step()
 			},
 			
 			completeWristSize() {

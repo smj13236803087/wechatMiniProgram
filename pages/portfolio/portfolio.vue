@@ -122,7 +122,7 @@
 				// 获取系统信息，计算实际像素值（预览区域 rpx 对应的像素）
 				const systemInfo = uni.getSystemInfoSync()
 				const screenWidth = systemInfo.screenWidth
-				// 将预览整体缩小为 260rpx，减小卡片高度
+				// 预览区域 260rpx，与工作台保持一致比例
 				const size = (260 / 750) * screenWidth
 				const centerX = size / 2
 				const centerY = size / 2
@@ -136,35 +136,92 @@
 					ctx.draw()
 					return
 				}
-				
-				// 基础珠子半径
-				const baseBeadRadius = 10
-				const margin = 4
-				// 允许的最大圆半径（保证珠子不会被裁剪）
-				const maxRadius = size / 2 - baseBeadRadius - margin
-				if (maxRadius <= 0) {
-					ctx.draw()
-					return
+
+				// ===== 使用与工作台一致的布局算法，保证预览效果与实际设计相符 =====
+				const defaultDiameter = 8
+				const mmToPx = 3.0
+				const maxPreferredScale = 2.0
+				const minPreferredScale = 0.25
+				// 圆半径与工作台保持同一比例
+				const radius = size * 0.35
+
+				// 计算珠子大小缩放因子（与工作台 beadScale 逻辑一致）
+				const totalAngleForScale = (scale) => {
+					let total = 0
+					for (let i = 0; i < items.length; i++) {
+						const a = items[i]
+						const b = items[(i + 1) % items.length]
+						const d1 = a.diameter ?? defaultDiameter
+						const d2 = b.diameter ?? defaultDiameter
+						const r1 = (d1 / 2) * mmToPx * scale
+						const r2 = (d2 / 2) * mmToPx * scale
+						const combined = r1 + r2
+						const safeRatio = Math.min(combined / (2 * radius), 0.999)
+						total += 2 * Math.asin(safeRatio)
+					}
+					return total
 				}
-				
-				// 根据珠子数量计算最小需要的圆半径（周长 = 珠子数量 * 珠子直径）
-				const minCircumference = items.length * baseBeadRadius * 2
-				const minRadius = minCircumference / (2 * Math.PI)
-				
-				let beadRadius = baseBeadRadius
-				let radius
-				
-				if (minRadius <= maxRadius) {
-					// 正常情况：优先保证不重叠，同时不超过最大半径
-					radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25)
-					radius = Math.min(radius, maxRadius)
+
+				const target = 2 * Math.PI
+				const totalAtMax = totalAngleForScale(maxPreferredScale)
+				let beadScale
+				if (Math.abs(totalAtMax - target) < 1e-4 || totalAtMax <= target) {
+					beadScale = maxPreferredScale
 				} else {
-					// 珠子太多，按比例缩小珠子和圆半径，保证全部在画布内
-					const scale = maxRadius / minRadius
-					beadRadius = baseBeadRadius * scale
-					radius = maxRadius
+					const totalAtMin = totalAngleForScale(minPreferredScale)
+					if (totalAtMin > target) {
+						beadScale = minPreferredScale
+					} else {
+						let lo = minPreferredScale
+						let hi = maxPreferredScale
+						let best = minPreferredScale
+						for (let iter = 0; iter < 50; iter++) {
+							const mid = (lo + hi) / 2
+							const t = totalAngleForScale(mid)
+							if (Math.abs(t - target) < 1e-4) {
+								best = mid
+								break
+							}
+							if (t > target) {
+								hi = mid
+							} else {
+								lo = mid
+								best = mid
+							}
+							if (hi - lo < 1e-4) break
+						}
+						beadScale = best
+					}
 				}
-				
+
+				// 计算每颗珠子的半径（像素）
+				const getBeadRadius = (diameter) => {
+					const d = diameter || defaultDiameter
+					return (d / 2) * mmToPx * beadScale
+				}
+
+				// 计算角度步长数组
+				const angleSteps = []
+				for (let i = 0; i < items.length; i++) {
+					const currentItem = items[i]
+					const nextItem = items[(i + 1) % items.length]
+					const r1 = getBeadRadius(currentItem.diameter)
+					const r2 = getBeadRadius(nextItem.diameter)
+					const combinedRadius = r1 + r2
+					const safeRatio = Math.min(combinedRadius / (2 * radius), 0.999)
+					const angleStep = 2 * Math.asin(safeRatio)
+					angleSteps.push(angleStep)
+				}
+
+				const getItemAngle = (index) => {
+					if (index === 0) return 0
+					let cumulativeAngle = 0
+					for (let i = 0; i < index; i++) {
+						cumulativeAngle += angleSteps[i]
+					}
+					return cumulativeAngle
+				}
+
 				// 绘制圆形路径（虚线）
 				ctx.beginPath()
 				ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
@@ -174,15 +231,12 @@
 				ctx.stroke()
 				ctx.setLineDash([], 0)
 				
-				// 计算每个珠子的角度（均匀分布）
-				const totalAngle = 2 * Math.PI
-				const angleStep = totalAngle / items.length
-				
-				// 绘制每个珠子
+				// 绘制每个珠子（使用与工作台一致的角度和大小）
 				items.forEach((item, index) => {
-					const angle = index * angleStep
+					const angle = getItemAngle(index)
 					const x = centerX + radius * Math.cos(angle)
 					const y = centerY + radius * Math.sin(angle)
+					const beadRadius = getBeadRadius(item.diameter)
 					const color = item.color || '#8b4513'
 					
 					// 绘制珠子

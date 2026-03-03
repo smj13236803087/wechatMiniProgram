@@ -67,25 +67,82 @@ const _sfc_main = {
         ctx.draw();
         return;
       }
-      const baseBeadRadius = 10;
-      const margin = 4;
-      const maxRadius = size / 2 - baseBeadRadius - margin;
-      if (maxRadius <= 0) {
-        ctx.draw();
-        return;
-      }
-      const minCircumference = items.length * baseBeadRadius * 2;
-      const minRadius = minCircumference / (2 * Math.PI);
-      let beadRadius = baseBeadRadius;
-      let radius;
-      if (minRadius <= maxRadius) {
-        radius = Math.max(minRadius + beadRadius * 0.5, size * 0.25);
-        radius = Math.min(radius, maxRadius);
+      const defaultDiameter = 8;
+      const mmToPx = 3;
+      const maxPreferredScale = 2;
+      const minPreferredScale = 0.25;
+      const radius = size * 0.35;
+      const totalAngleForScale = (scale) => {
+        let total = 0;
+        for (let i = 0; i < items.length; i++) {
+          const a = items[i];
+          const b = items[(i + 1) % items.length];
+          const d1 = a.diameter ?? defaultDiameter;
+          const d2 = b.diameter ?? defaultDiameter;
+          const r1 = d1 / 2 * mmToPx * scale;
+          const r2 = d2 / 2 * mmToPx * scale;
+          const combined = r1 + r2;
+          const safeRatio = Math.min(combined / (2 * radius), 0.999);
+          total += 2 * Math.asin(safeRatio);
+        }
+        return total;
+      };
+      const target = 2 * Math.PI;
+      const totalAtMax = totalAngleForScale(maxPreferredScale);
+      let beadScale;
+      if (Math.abs(totalAtMax - target) < 1e-4 || totalAtMax <= target) {
+        beadScale = maxPreferredScale;
       } else {
-        const scale = maxRadius / minRadius;
-        beadRadius = baseBeadRadius * scale;
-        radius = maxRadius;
+        const totalAtMin = totalAngleForScale(minPreferredScale);
+        if (totalAtMin > target) {
+          beadScale = minPreferredScale;
+        } else {
+          let lo = minPreferredScale;
+          let hi = maxPreferredScale;
+          let best = minPreferredScale;
+          for (let iter = 0; iter < 50; iter++) {
+            const mid = (lo + hi) / 2;
+            const t = totalAngleForScale(mid);
+            if (Math.abs(t - target) < 1e-4) {
+              best = mid;
+              break;
+            }
+            if (t > target) {
+              hi = mid;
+            } else {
+              lo = mid;
+              best = mid;
+            }
+            if (hi - lo < 1e-4)
+              break;
+          }
+          beadScale = best;
+        }
       }
+      const getBeadRadius = (diameter) => {
+        const d = diameter || defaultDiameter;
+        return d / 2 * mmToPx * beadScale;
+      };
+      const angleSteps = [];
+      for (let i = 0; i < items.length; i++) {
+        const currentItem = items[i];
+        const nextItem = items[(i + 1) % items.length];
+        const r1 = getBeadRadius(currentItem.diameter);
+        const r2 = getBeadRadius(nextItem.diameter);
+        const combinedRadius = r1 + r2;
+        const safeRatio = Math.min(combinedRadius / (2 * radius), 0.999);
+        const angleStep = 2 * Math.asin(safeRatio);
+        angleSteps.push(angleStep);
+      }
+      const getItemAngle = (index) => {
+        if (index === 0)
+          return 0;
+        let cumulativeAngle = 0;
+        for (let i = 0; i < index; i++) {
+          cumulativeAngle += angleSteps[i];
+        }
+        return cumulativeAngle;
+      };
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       ctx.setStrokeStyle("#e5e7eb");
@@ -93,12 +150,11 @@ const _sfc_main = {
       ctx.setLineDash([5, 5], 0);
       ctx.stroke();
       ctx.setLineDash([], 0);
-      const totalAngle = 2 * Math.PI;
-      const angleStep = totalAngle / items.length;
       items.forEach((item, index) => {
-        const angle = index * angleStep;
+        const angle = getItemAngle(index);
         const x = centerX + radius * Math.cos(angle);
         const y = centerY + radius * Math.sin(angle);
+        const beadRadius = getBeadRadius(item.diameter);
         const color = item.color || "#8b4513";
         ctx.beginPath();
         ctx.arc(x, y, beadRadius, 0, 2 * Math.PI);

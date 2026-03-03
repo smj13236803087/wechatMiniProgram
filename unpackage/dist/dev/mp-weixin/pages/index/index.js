@@ -4,15 +4,29 @@ const common_assets = require("../../common/assets.js");
 const _sfc_main = {
   data() {
     return {
-      activeTab: "ai"
+      activeTab: "ai",
+      dashOffset: 0,
+      dashTimer: null,
+      screenWidth: 0
     };
   },
   onLoad() {
-    this.$nextTick(() => {
-      setTimeout(() => {
-        this.drawPreview();
-      }, 300);
+    common_vendor.index.getSystemInfo({
+      success: (res) => {
+        this.screenWidth = res.screenWidth;
+        this.$nextTick(() => {
+          this.startPreviewAnimation();
+        });
+      },
+      fail: () => {
+        this.$nextTick(() => {
+          this.startPreviewAnimation();
+        });
+      }
     });
+  },
+  onUnload() {
+    this.stopPreviewAnimation();
   },
   methods: {
     goToWorkspace() {
@@ -20,11 +34,29 @@ const _sfc_main = {
         url: "/pages/workspace/workspace"
       });
     },
+    // 启动虚线圆动画
+    startPreviewAnimation() {
+      this.stopPreviewAnimation();
+      this.drawPreview();
+      this.dashTimer = setInterval(() => {
+        this.dashOffset = (this.dashOffset + 2) % 16;
+        this.drawPreview();
+      }, 60);
+    },
+    // 停止虚线圆动画
+    stopPreviewAnimation() {
+      if (this.dashTimer) {
+        clearInterval(this.dashTimer);
+        this.dashTimer = null;
+      }
+    },
     // 绘制预览图（虚线圆形 + 两个加号）
     drawPreview() {
       const ctx = common_vendor.index.createCanvasContext("diy-preview", this);
-      const systemInfo = common_vendor.index.getSystemInfoSync();
-      const screenWidth = systemInfo.screenWidth;
+      const screenWidth = this.screenWidth;
+      if (!screenWidth) {
+        return;
+      }
       const size = 500 / 750 * screenWidth;
       const centerX = size / 2;
       const centerY = size / 2;
@@ -34,7 +66,7 @@ const _sfc_main = {
       ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
       ctx.setStrokeStyle("rgba(168, 85, 247, 0.3)");
       ctx.setLineWidth(3);
-      ctx.setLineDash([8, 8], 0);
+      ctx.setLineDash([8, 8], this.dashOffset || 0);
       ctx.stroke();
       ctx.setLineDash([], 0);
       const plusPositions = [
@@ -72,11 +104,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: common_assets._imports_0,
     b: common_assets._imports_1,
-    c: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
-    d: $data.activeTab === "ai" ? 1 : "",
-    e: common_vendor.o(($event) => $data.activeTab = "ai"),
-    f: $data.activeTab === "classic" ? 1 : "",
-    g: common_vendor.o(($event) => $data.activeTab = "classic")
+    c: common_assets._imports_2,
+    d: common_assets._imports_3,
+    e: common_assets._imports_4,
+    f: common_assets._imports_5,
+    g: common_vendor.o((...args) => $options.goToWorkspace && $options.goToWorkspace(...args)),
+    h: common_assets._imports_6,
+    i: $data.activeTab === "ai" ? 1 : "",
+    j: common_vendor.o(($event) => $data.activeTab = "ai"),
+    k: common_assets._imports_7,
+    l: $data.activeTab === "classic" ? 1 : "",
+    m: common_vendor.o(($event) => $data.activeTab = "classic")
   };
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-1cf27b2a"]]);
